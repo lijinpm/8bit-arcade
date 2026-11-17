@@ -1,0 +1,1411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Horizon Ace · 8-bit Flight Arcade</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+/* =====================================================================
+   UI COMPONENTS (8bitcn-style, pure CSS, reusable classes)
+   .px-card  .px-btn  .px-btn--alt  .px-chip  .px-progress  .px-kbd
+   ===================================================================== */
+:root{
+  --ink:#16122b; --paper:#fff8e7; --paper-shade:#e8d9b8;
+  --accent:#ff6b3d; --accent-hi:#ffb08f; --accent-lo:#b8401f;
+  --alt:#7ec8ff; --alt-hi:#d4eeff; --alt-lo:#3a7bd5;
+  --u:2px; --b:calc(var(--u)*2);
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:#0b0918;color:var(--paper);
+  font-family:'Press Start 2P',ui-monospace,Menlo,Consolas,monospace;-webkit-font-smoothing:none;user-select:none}
+body{background:radial-gradient(circle at 50% 40%,#1c1838 0,#0b0918 70%)}
+#stage{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:max(9px,calc(var(--u)*4.5));line-height:1.6;
+  box-shadow:0 0 0 var(--b) #000,0 0 0 calc(var(--b)*2) #2b2550}
+#game{display:block;width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges}
+.hidden{display:none!important}
+.overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(11,9,24,.42)}
+
+.px-card{background:var(--paper);color:var(--ink);text-align:center;width:calc(var(--u)*220);
+  padding:calc(var(--u)*9) calc(var(--u)*10);
+  box-shadow:0 calc(var(--b)*-1) 0 0 var(--ink),0 var(--b) 0 0 var(--ink),calc(var(--b)*-1) 0 0 0 var(--ink),var(--b) 0 0 0 var(--ink),
+    inset 0 calc(var(--b)*-1) 0 0 var(--paper-shade)}
+.px-title{font-size:1.9em;line-height:1.2;margin:0 0 .35em;color:var(--accent);letter-spacing:.02em;
+  text-shadow:var(--u) var(--u) 0 var(--ink),calc(var(--u)*-1) calc(var(--u)*-1) 0 var(--ink),var(--u) calc(var(--u)*-1) 0 var(--ink),calc(var(--u)*-1) var(--u) 0 var(--ink),calc(var(--u)*2) calc(var(--u)*2) 0 var(--ink)}
+.px-sub{font-size:.66em;opacity:.75;margin:0 0 .9em}
+.px-btn{font:inherit;font-size:.85em;cursor:pointer;border:0;color:var(--ink);background:var(--accent);text-transform:uppercase;
+  padding:calc(var(--u)*4) calc(var(--u)*6);margin:calc(var(--u)*3);
+  box-shadow:0 calc(var(--b)*-1) 0 0 var(--ink),0 var(--b) 0 0 var(--ink),calc(var(--b)*-1) 0 0 0 var(--ink),var(--b) 0 0 0 var(--ink),
+    inset 0 calc(var(--b)*-1) 0 0 var(--accent-lo),inset 0 var(--b) 0 0 var(--accent-hi)}
+.px-btn:hover{filter:brightness(1.08);transform:translateY(calc(var(--u)*-1))}
+.px-btn:active{transform:translateY(var(--u))}
+.px-btn:focus-visible{outline:var(--u) dashed var(--ink);outline-offset:calc(var(--b)*2)}
+.px-btn--alt{background:var(--alt);box-shadow:0 calc(var(--b)*-1) 0 0 var(--ink),0 var(--b) 0 0 var(--ink),calc(var(--b)*-1) 0 0 0 var(--ink),var(--b) 0 0 0 var(--ink),
+    inset 0 calc(var(--b)*-1) 0 0 var(--alt-lo),inset 0 var(--b) 0 0 var(--alt-hi)}
+.px-kbd{display:inline-block;background:var(--ink);color:var(--paper);padding:0 .4em;margin:0 .1em .2em 0;font-size:.9em}
+.px-chip{background:rgba(22,18,43,.8);color:#fff;padding:calc(var(--u)*1.5) calc(var(--u)*2.5);white-space:nowrap;
+  box-shadow:0 calc(var(--u)*-1) 0 0 rgba(255,248,231,.85),0 var(--u) 0 0 rgba(255,248,231,.85),calc(var(--u)*-1) 0 0 0 rgba(255,248,231,.85),var(--u) 0 0 0 rgba(255,248,231,.85)}
+.px-chip b{font-weight:normal;color:#ffd23f}
+.px-progress{position:relative;height:calc(var(--u)*4);background:#3b2f63;flex:1;min-width:calc(var(--u)*30)}
+.px-progress>i{position:absolute;left:0;top:0;bottom:0;background:#ffd23f;box-shadow:inset 0 calc(var(--u)*-1) 0 rgba(0,0,0,.25)}
+.px-progress.low>i{background:#ff4d4d;animation:blink .45s steps(2) infinite}
+@keyframes blink{50%{opacity:.35}}
+
+/* HUD */
+#hud{position:absolute;left:calc(var(--u)*3);right:calc(var(--u)*3);top:calc(var(--u)*3);display:grid;
+  grid-template-columns:auto 1fr auto;gap:calc(var(--u)*2.5);font-size:max(8px,calc(var(--u)*3.6));pointer-events:none;line-height:1.3}
+#hud .row{display:flex;gap:calc(var(--u)*2.5);align-items:center}
+#hud .stack{display:flex;flex-direction:column;gap:calc(var(--u)*2.5)}
+#lives{display:flex;gap:calc(var(--u)*1)}
+#lives img{width:calc(var(--u)*9);height:calc(var(--u)*9);image-rendering:pixelated}
+#pauseBtn{pointer-events:auto;margin:0;padding:calc(var(--u)*2) calc(var(--u)*3);font-size:1em}
+#status{text-align:center}
+#hudSound{pointer-events:auto;margin:0 calc(var(--u)*2) 0 0;padding:calc(var(--u)*2) calc(var(--u)*2.5);font-size:1em;line-height:0}
+#hudSound svg{width:calc(var(--u)*8);height:calc(var(--u)*8);fill:var(--ink)}
+#hudSound.off{background:#c9c3d9}
+#status.warn{color:#ff6b6b;animation:blink .5s steps(2) infinite}
+
+/* screens */
+#menuPlane{width:calc(var(--u)*68);height:calc(var(--u)*68);image-rendering:pixelated;display:block;margin:.2em auto .5em;animation:hover 1.4s steps(4) infinite}
+@keyframes hover{0%,100%{transform:translateY(0)}50%{transform:translateY(calc(var(--u)*-3))}}
+.controls{display:grid;grid-template-columns:auto auto;gap:.3em .9em;justify-content:center;text-align:left;font-size:.62em;margin:0 auto .9em}
+.hint{font-size:.58em;color:#6b5f8a;margin:0 0 .7em;line-height:1.7}
+.stats{display:grid;grid-template-columns:auto auto;gap:.5em 1.2em;justify-content:center;text-align:left;font-size:.72em;margin:.3em auto 1em}
+.stats span:nth-child(even){text-align:right;color:var(--accent-lo)}
+.newbest{color:#e63946;font-size:.66em;margin:-.5em 0 .8em;animation:blink .6s steps(2) infinite}
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="game" width="256" height="384" aria-label="Horizon Ace game"></canvas>
+
+  <div id="hud" class="hidden">
+    <div class="stack">
+      <div class="px-chip">SCORE <b id="hScore">000000</b></div>
+      <div class="px-chip">HI&nbsp;&nbsp;&nbsp; <b id="hHi">000000</b></div>
+    </div>
+    <div class="stack">
+      <div class="row"><div class="px-chip" id="lives" title="Lives"></div><div class="px-chip row" style="flex:1">FUEL<div class="px-progress" id="hFuel"><i style="width:100%"></i></div></div></div>
+      <div class="px-chip" id="status">COASTAL ISLES</div>
+    </div>
+    <div class="stack" style="align-items:flex-end">
+      <div class="row"><button class="px-btn px-btn--alt sndBtn" id="hudSound" title="Sound on/off (M)"></button><button class="px-btn px-btn--alt" id="pauseBtn" title="Pause (Esc / P)">II</button></div>
+      <div class="px-chip"><b id="hDist">0.0</b>KM</div>
+    </div>
+  </div>
+
+  <div class="overlay" id="menu">
+    <div class="px-card">
+      <h1 class="px-title">HORIZON<br>ACE</h1>
+      <canvas id="menuPlane" width="17" height="17"></canvas>
+      <p class="px-sub">Fly from dawn to dusk and land at the harbour airfield.</p>
+      <div class="controls">
+        <span><span class="px-kbd">←↑↓→</span><span class="px-kbd">WASD</span></span><span>Fly</span>
+        <span><span class="px-kbd">SPACE</span><span class="px-kbd">J</span></span><span>Fire</span>
+        <span><span class="px-kbd">SHIFT</span><span class="px-kbd">K</span></span><span>Boost</span>
+        <span><span class="px-kbd">ESC</span><span class="px-kbd">P</span></span><span>Pause</span>
+        <span><span class="px-kbd">M</span></span><span>Sound on/off</span>
+      </div>
+      <p class="hint">Grab yellow F crates for fuel, blue P for triple shot.<br>Avoid storm clouds, balloons and snowy summits.</p>
+      <button class="px-btn" id="startBtn">Take Off</button><button class="px-btn px-btn--alt sndText" id="menuSound">Sound: On</button>
+      <p class="px-sub" id="menuHi" style="margin:.7em 0 0"></p>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="pause">
+    <div class="px-card">
+      <h2 class="px-title">PAUSED</h2>
+      <p class="px-sub">Press ESC or P to resume</p>
+      <button class="px-btn" id="resumeBtn">Resume</button><br>
+      <button class="px-btn px-btn--alt" id="pRestartBtn">Restart</button>
+      <button class="px-btn px-btn--alt" id="pMenuBtn">Main Menu</button><br>
+      <button class="px-btn px-btn--alt sndText" id="pauseSound">Sound: On</button>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="over">
+    <div class="px-card">
+      <h2 class="px-title" id="endTitle">GAME OVER</h2>
+      <p class="px-sub" id="endSub">All lives lost</p>
+      <div class="stats" id="endStats"></div>
+      <p class="newbest hidden" id="newBest">NEW HIGH SCORE!</p>
+      <button class="px-btn" id="restartBtn">Fly Again</button>
+      <button class="px-btn px-btn--alt" id="menuBtn">Main Menu</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =====================================================================
+   GAME CORE — canvas rendering + game logic. Knows nothing about the UI.
+   ===================================================================== */
+const Game = (() => {
+'use strict';
+const W = 256, H = 384, CH = 128;                 // internal resolution, terrain chunk height
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+
+/* ---------- helpers ---------- */
+const rand = (a, b) => a + Math.random()*(b - a);
+const randi = (a, b) => Math.floor(rand(a, b + 1));
+const pick = a => a[Math.floor(Math.random()*a.length)];
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const lerp = (a, b, t) => a + (b - a)*t;
+const mix = (A, B, t) => A.map((v, i) => lerp(v, B[i], t));
+const sstep = (a, b, x) => { const t = clamp((x - a)/(b - a), 0, 1); return t*t*(3 - 2*t); };
+const overlap = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+const rgb = c => `rgb(${c[0]|0},${c[1]|0},${c[2]|0})`;
+const hexi = h => { const n = parseInt(h.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
+function pcircle(g, cx, cy, r){ for (let dy = -r; dy <= r; dy++){ const hw = Math.floor(Math.sqrt(r*r - dy*dy) + 0.3); g.fillRect(cx - hw, cy + dy, hw*2 + 1, 1); } }
+
+/* ---------- deterministic noise for the landscape ---------- */
+function hash(x, y){ let h = (Math.imul(x|0, 374761393) + Math.imul(y|0, 668265263))|0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0)/4294967296; }
+function vnoise(x, y){
+  const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
+  const u = xf*xf*(3 - 2*xf), v = yf*yf*(3 - 2*yf);
+  const a = hash(xi, yi), b = hash(xi + 1, yi), c = hash(xi, yi + 1), d = hash(xi + 1, yi + 1);
+  return a + (b - a)*u + (c - a)*v + (a - b - c + d)*u*v;
+}
+function fbm(x, y, o){ let s = 0, a = 0.5, f = 1, n = 0; for (let i = 0; i < o; i++){ s += a*vnoise(x*f, y*f); n += a; a *= 0.5; f *= 2; } return s/n; }
+function ridged(x, y, o){ let s = 0, a = 0.5, f = 1, n = 0; for (let i = 0; i < o; i++){ const r = 1 - Math.abs(2*vnoise(x*f + 17*i, y*f) - 1); s += a*r*r; n += a; a *= 0.5; f *= 2; } return s/n; }
+
+/* ---------- pixel sprites from ASCII grids (auto outline) ---------- */
+function sprite(rows, pal, o = {}){
+  const {scale = 1, flipX = false, flipY = false, outline = '#16122b'} = o;
+  const h = rows.length, w = rows[0].length, pw = w + 2, ph = h + 2;
+  const grid = Array.from({length: ph}, () => new Array(pw).fill(null));
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++){ const ch = rows[y][x]; if (ch !== '.' && pal[ch]) grid[y+1][x+1] = pal[ch]; }
+  if (outline){
+    const e = [];
+    for (let y = 0; y < ph; y++) for (let x = 0; x < pw; x++){
+      if (grid[y][x]) continue;
+      if ((grid[y-1] && grid[y-1][x]) || (grid[y+1] && grid[y+1][x]) || grid[y][x-1] || grid[y][x+1]) e.push([x, y]);
+    }
+    e.forEach(([x, y]) => grid[y][x] = outline);
+  }
+  const c = document.createElement('canvas'); c.width = pw*scale; c.height = ph*scale;
+  const g = c.getContext('2d');
+  for (let y = 0; y < ph; y++) for (let x = 0; x < pw; x++){
+    const col = grid[y][x]; if (!col) continue;
+    g.fillStyle = col; g.fillRect((flipX ? pw-1-x : x)*scale, (flipY ? ph-1-y : y)*scale, scale, scale);
+  }
+  return c;
+}
+const silhouette = (rows, flipY) => { const pal = {}; rows.join('').split('').forEach(ch => { if (ch !== '.') pal[ch] = '#061428'; }); return sprite(rows, pal, {flipY, outline:null}); };
+function layer(base, over){ return base.map((r, y) => { const o = over[y] || ''; let s = ''; for (let x = 0; x < r.length; x++){ const ch = o[x]; s += (ch && ch !== '.') ? ch : r[x]; } return s; }); }
+
+/* ---------- aircraft art (all original) ---------- */
+const PLAYER_ROWS = [
+  "...............",
+  ".......K.......",
+  "......BKB......",
+  "......BCB......",
+  "......BcB......",
+  "..WWWWBBBVVVV..",
+  "LWWWWWBBBVVVVVL",
+  "LwwwwwBBBvvvvvL",
+  "......BBB......",
+  "......BSB......",
+  "......BBB......",
+  "......BBB......",
+  "...TTTTBTTTT...",
+  "...ttttBtttt...",
+  ".......B......."];
+const PROP = [["....ppp.ppp...."], [".....q...q....."]];
+const PPAL = {B:'#f4efe0',K:'#ffd23f',C:'#2fb4f0',c:'#bff0ff',W:'#e94f37',V:'#e94f37',w:'#a8322a',v:'#a8322a',L:'#ffd23f',S:'#e94f37',T:'#e94f37',t:'#a8322a',p:'#e8e8e8',q:'#9a9aa8'};
+const bankPal = dir => Object.assign({}, PPAL, dir < 0 ? {W:'#b83a2a',w:'#7a2219',V:'#ff7f62'} : dir > 0 ? {V:'#b83a2a',v:'#7a2219',W:'#ff7f62'} : {});
+const PLAYER_SPR = [-1, 0, 1].map(b => PROP.map(p => sprite(layer(PLAYER_ROWS, p), bankPal(b))));   // [bank][prop]
+const PLAYER_SHADOW = silhouette(PLAYER_ROWS, false);
+
+const SCOUT_ROWS = [
+  ".....K.....",
+  "....BCB....",
+  "WWWWBBBWWWW",
+  "WRWWBBBWWRW",
+  "wwwwBBBwwww",
+  "....BBB....",
+  "...TBBBT...",
+  "..TTTBTTT..",
+  ".....B....."];
+const FIGHTER_ROWS = [
+  "......K......",
+  ".....BCB.....",
+  ".....BCB.....",
+  "WWWWWBBBWWWWW",
+  "WRWWWBBBWWWRW",
+  "wwwwwBBBwwwww",
+  ".....BBB.....",
+  ".....BBB.....",
+  "....TBBBT....",
+  "..TTTTBTTTT..",
+  "..ttttBtttt..",
+  "......B......"];
+const BOMBER_ROWS = [
+  "...........K...........",
+  "..........BCB..........",
+  "..........BCB..........",
+  "....E.....BBB.....E....",
+  "WWWWEWWWWWBBBWWWWWEWWWW",
+  "WRRWEWWWWWBBBWWWWWEWRRW",
+  "WRRWWWWWWWBBBWWWWWWWRRW",
+  "wwwwwwwwwwBBBwwwwwwwwww",
+  "..........BBB..........",
+  "..........BGB..........",
+  "..........BBB..........",
+  "..........BBB..........",
+  "......TTTTBBBTTTT......",
+  "......TRRTBBBTRRT......",
+  "......ttttBBBtttt......",
+  "...........B..........."];
+const BALLOON_ROWS = [
+  "...SSS...",
+  "..SHHSS..",
+  ".SHHSSSS.",
+  ".SHSSSSS.",
+  ".SSSSSSs.",
+  ".RRRRRRs.",
+  ".SSSSSSs.",
+  ".SSSSSSs.",
+  "..SSSSs..",
+  "..SSSss..",
+  "...Sss...",
+  "..F.s.F..",
+  ".FF.s.FF.",
+  "....s...."];
+const EPAL = {
+  scout:  {B:'#b8aed6',W:'#9d8fc7',w:'#6b5c99',K:'#ffd23f',C:'#2b2b2b',R:'#ff4f8b',T:'#6b5c99',t:'#4a3f73'},
+  fighter:{B:'#3f4459',W:'#565d7d',w:'#2c3044',K:'#ffd23f',C:'#9be7ff',R:'#ff4f8b',T:'#2c3044',t:'#1d2030'},
+  bomber: {B:'#5a4a73',W:'#75639a',w:'#45375e',E:'#1d1a26',K:'#ffd23f',C:'#9be7ff',G:'#ff4f8b',R:'#ff4f8b',T:'#45375e',t:'#2f2542'},
+  balloon:{S:'#c7ccd6',H:'#ffffff',s:'#8a92a3',R:'#e63946',F:'#8a92a3'}};
+const DEFS = {
+  scout:  {rows:SCOUT_ROWS,  hp:1,  score:100,  flip:true},
+  fighter:{rows:FIGHTER_ROWS,hp:3,  score:250,  flip:true},
+  bomber: {rows:BOMBER_ROWS, hp:26, score:1500, flip:true},
+  balloon:{rows:BALLOON_ROWS,hp:3,  score:150,  flip:false}};
+for (const k in DEFS){
+  const d = DEFS[k];
+  d.spr = sprite(d.rows, EPAL[k], {flipY:d.flip});
+  d.hit = sprite(d.rows, Object.fromEntries(Object.keys(EPAL[k]).map(c => [c, '#ffffff'])), {flipY:d.flip});  // white hit-flash
+  d.sh = silhouette(d.rows, d.flip);
+  d.w = d.spr.width; d.h = d.spr.height;
+}
+const CRATE = {
+  fuel: sprite([".YYYYYYY.","YyyyyyyyY","YyRRRRRyY","YyRyyyyyY","YyRRRRyyY","YyRyyyyyY","YyRyyyyyY","YyyyyyyyY",".YYYYYYY."], {Y:'#c98d00',y:'#ffd23f',R:'#e63946'}),
+  power:sprite([".BBBBBBB.","BbbbbbbbB","BbWWWWbbB","BbWbbbWbB","BbWWWWbbB","BbWbbbbbB","BbWbbbbbB","BbbbbbbbB",".BBBBBBB."], {B:'#1d4fa8',b:'#4da3ff',W:'#ffffff'})};
+const CHUTE = sprite(["..ccccc..",".cCcCcCc.","cCcCcCcCc","s.......s",".s.....s.","..s...s.."], {c:'#ffffff',C:'#e63946',s:'#d9d9d9'});
+const TREE = sprite(["..ggg..",".gGGGg.","gGHGGGg","gGGGGgd","ggGGgdd",".ggddd.","..ddd.."], {g:'#2f8a42',G:'#45a650',H:'#93dc6a',d:'#1f6334'}, {outline:'#123522'});
+const PINE = sprite(["...h...","..hgg..","..ggd..",".hggdd.",".gggdd.","hgggddd","...t..."], {h:'#5bbf74',g:'#2f7f4c',d:'#1d5a37',t:'#6b4a2a'}, {outline:'#103020'});
+const HOUSE = [
+  sprite(["rrrrrrr","RRRRRRR","rrrrrrr","wwwwwww","wdwwwdw"], {r:'#c8553d',R:'#e98a6c',w:'#f2e6c9',d:'#5a4636'}),
+  sprite(["bbbbbbb","BBBBBBB","bbbbbbb","wwwwwww","wwdwdww"], {b:'#4d6fb3',B:'#86a6e3',w:'#efe6d2',d:'#5a4636'})];
+const HANGAR = sprite(["gggggggggggggg","GGGGGGGGGGGGGG","gggggggggggggg","GGGGGGGGGGGGGG","gggggggggggggg","dddddddddddddd","dddWWWWWWWWddd"], {g:'#8b93a6',G:'#b8c0d0',d:'#4c5263',W:'#2b2f3a'});
+const ROCK = sprite([".rr.","rRrr","rrrd"], {r:'#9aa3b5',R:'#d4dae6',d:'#6b7385'}, {outline:'#25324f'});
+/* ---------- ships: top-down, bow to the right (mirrored when sailing left) ---------- */
+function hullRows(L, Hh){
+  const c = (Hh - 1)/2, bowLen = Hh*1.1, g = [];
+  for (let r = 0; r < Hh; r++){
+    const dr = Math.abs(r - c), end = L - 1 - Math.round(Math.pow(dr/c, 1.6)*bowLen), start = dr > c - 0.6 ? 1 : 0;
+    g.push(Array.from({length:L}, (_, x) => x >= start && x <= end ? 'D' : '.'));
+  }
+  const out = (r, x) => r < 0 || r >= Hh || x < 0 || x >= L || g[r][x] === '.';
+  for (let r = 0; r < Hh; r++) for (let x = 0; x < L; x++) if (g[r][x] !== '.' && (out(r-1, x) || out(r+1, x) || out(r, x-1) || out(r, x+1))) g[r][x] = 'h';
+  return g;
+}
+function shipDef(L, Hh, pal, paint, extra){
+  const g = hullRows(L, Hh);
+  const rect = (x0, y0, w, h, ch) => { for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) if (g[y] && g[y][x] && g[y][x] !== '.') g[y][x] = ch; };
+  paint(rect);
+  const rows = g.map(r => r.join('')), white = Object.fromEntries(Object.keys(pal).map(k => [k, '#ffffff'])), o = {outline:'#0d2a52'};
+  const d = Object.assign({right:sprite(rows, pal, o), left:sprite(rows, pal, Object.assign({flipX:true}, o)),
+    hitR:sprite(rows, white, o), hitL:sprite(rows, white, Object.assign({flipX:true}, o))}, extra);
+  d.w = d.right.width; d.h = d.right.height; return d;
+}
+const RED = '#ff3b3b', GREEN = '#3bff6b', WHITE = '#ffffff';
+const SHIPS = {
+  fishing: shipDef(15, 6, {h:'#5a3418',D:'#b07a3f',W:'#f2f2f2',k:'#4d7fc4',n:'#e9d48a',M:'#6b4a2a'},
+    r => { r(4,1,3,4,'W'); r(7,1,1,4,'k'); r(9,2,3,2,'n'); r(1,2,2,2,'M'); },
+    {speed:[26,36], lights:[[2,1,RED],[2,4,GREEN]]}),
+  cargo: shipDef(46, 11, {h:'#7a2a24',D:'#55606e',W:'#f4f4f4',k:'#2b3f66',F:'#16122b',f:'#e63946',a:'#d9573b',b:'#3a7bd5',c:'#e9c46a',d:'#2a9d8f',M:'#e8e8e8'},
+    r => { r(2,2,6,7,'W'); r(7,2,1,7,'k'); r(3,4,2,3,'F'); r(3,5,2,1,'f');
+           for (let x = 10, n = 0; x < 32; x += 5, n++) for (const y0 of [2, 6]) r(x, y0, 4, 3, 'abcd'[Math.floor(hash(n, y0)*4)]);
+           r(34,5,1,1,'M'); },
+    {speed:[20,28], big:true, lights:[[1,1,RED],[1,9,GREEN],[34,5,WHITE]]}),
+  liner: shipDef(54, 13, {h:'#1d3a6b',D:'#eef1f6',U:'#ffffff',V:'#dfe5ee',k:'#3a6fb3',F:'#d62828',f:'#16122b',P:'#4cc9f0',o:'#ff8c1a'},
+    r => { r(6,2,32,9,'U'); r(8,3,28,7,'V'); for (let x = 6; x < 38; x += 2){ r(x,2,1,1,'k'); r(x,10,1,1,'k'); }
+           r(15,5,3,3,'F'); r(16,6,1,1,'f'); r(24,5,3,3,'F'); r(25,6,1,1,'f'); r(2,5,3,3,'P');
+           for (let x = 10; x < 34; x += 6){ r(x,1,2,1,'o'); r(x,11,2,1,'o'); } },
+    {speed:[24,32], big:true, lights:[[1,1,RED],[1,11,GREEN],[40,6,WHITE]]}),
+  patrol: shipDef(30, 8, {h:'#3a4150',D:'#8a93a3',C:'#c9d0dc',k:'#2b3f66',T:'#3a4150',B:'#1d2030',M:'#1d2030'},
+    r => { r(7,2,7,4,'C'); r(13,2,1,4,'k'); r(10,3,1,2,'M'); r(17,3,3,2,'T'); r(20,3,4,2,'B'); },
+    {speed:[36,48], lights:[[1,1,RED],[1,6,GREEN],[10,3,WHITE]]}),
+  gunboat: shipDef(26, 8, {h:'#1d2030',D:'#3f4459',R:'#ff4f8b',C:'#565d7d',k:'#9be7ff',T:'#2c3044',B:'#16122b',X:'#ff4f8b'},
+    r => { r(2,1,14,1,'R'); r(2,6,14,1,'R'); r(5,2,5,4,'C'); r(9,2,1,4,'k'); r(14,3,3,2,'T'); r(17,3,4,2,'B'); r(2,3,2,2,'X'); },
+    {speed:[30,40], hostile:true, hp:8, score:800, lights:[[1,1,RED],[1,6,GREEN]]})};
+const BOAT = sprite(["...s...","..sSs..",".sSSSs.","..sSs..","..hhh..",".hHHHh.",".hHHHh.","..hhh.."], {s:'#ffffff',S:'#e8eef7',h:'#8b5a2b',H:'#b07a3f'});
+
+/* ---------- the level: four sections, dawn to dusk ---------- */
+const SECTIONS = [
+  {name:'COASTAL ISLES', sub:'Morning patrol over open sea', y0:0,    cliff:3, forest:0.56, sand:1},
+  {name:'RIVER CANYON',  sub:'Watch for barrage balloons',   y0:2000, cliff:7, forest:0.42, sand:0},
+  {name:'SNOW PEAKS',    sub:'Avoid the snowy summits!',     y0:4600, cliff:6, forest:0.50, sand:0},
+  {name:'SUNSET HARBOR', sub:'Land at the airfield',         y0:7000, cliff:3, forest:0.60, sand:1}];
+const LEVEL = {len:9000, runway:{x0:110, x1:146, y0:8460, y1:8920}, landAt:8640};
+function weights(y){
+  const w = [];
+  for (let i = 0; i < 4; i++){
+    const a = SECTIONS[i].y0, b = i < 3 ? SECTIONS[i+1].y0 : 0;
+    w.push((i === 0 ? 1 : sstep(a - 250, a + 250, y)) - (i === 3 ? 0 : sstep(b - 250, b + 250, y)));
+  }
+  return w;
+}
+const canyonC = y => 128 + 50*Math.sin(y/240) + 22*Math.sin(y/93 + 1.3), canyonW = y => 20 + 7*Math.sin(y/170 + 0.5);
+const peaksC  = y => 128 + 40*Math.sin(y/210 + 2) + 18*Math.sin(y/71),   peaksW  = y => 12 + 5*Math.sin(y/130);
+const harborC = y => 128 + 30*Math.sin(y/200);
+const LAKES = [{x:70,y:2950,r:26},{x:190,y:3750,r:30},{x:150,y:5900,r:30}];
+const BRIDGES = [2450, 3350, 4150, 5300, 6400].map(y => y < 4600 ? {y, c:canyonC(y), half:canyonW(y) + 16} : {y, c:peaksC(y), half:peaksW(y) + 16});
+
+// signed land value (>0 = land) and mountain elevation (0..1) for any world point
+function sample(x, y, w){
+  let v = 0, e = 0;
+  if (w[0] > 0.001){ v += w[0]*((fbm(x/64 + 3, y/64, 3) - 0.57)*3.2); }
+  if (w[1] > 0.001){ const d = Math.abs(x - canyonC(y)); v += w[1]*((d - canyonW(y))/18 + (fbm(x/40, y/40 + 50, 2) - 0.5)*0.9); }
+  if (w[2] > 0.001){
+    const d = Math.abs(x - peaksC(y)), rw = peaksW(y);
+    v += w[2]*((d - rw)/12 + (fbm(x/40 + 9, y/40, 2) - 0.5)*0.6);
+    e += w[2]*(0.55*fbm(x/80 + 70, y/80, 3) + 0.6*ridged(x/52 + 5, y/52, 3))*clamp((d - rw - 6)/36, 0, 1);
+  }
+  if (w[3] > 0.001){
+    const seaW = 70*(1 - sstep(8150, 8450, y)), d = Math.abs(x - harborC(y));
+    v += w[3]*((d - seaW)/22 + (fbm(x/50 + 30, y/50, 2) - 0.5)*0.8 + (seaW < 1 ? 1 : 0));
+  }
+  for (const L of LAKES){ const dx = x - L.x, dy = y - L.y, q = (dx*dx + dy*dy)/(L.r*L.r); if (q < 4) v -= 2.4*Math.exp(-q*1.5); }
+  const R = LEVEL.runway;
+  if (x > R.x0 - 34 && x < R.x1 + 34 && y > R.y0 - 50 && y < R.y1 + 80){ v = Math.max(v, 1); e = 0; }
+  return [v, e];
+}
+const terrainAt = (x, y) => sample(x, y, weights(y));
+const SUMMIT = 0.83;   // elevation above which snowy summits reach flight level (dangerous)
+// canyon terraces: raised plateaus inside the forest, edged with cliff faces
+const tierAt = (x, y, w, v) => w[1] > 0.5 && v > 0.5 && fbm(x/90 + 40, y/90, 2) > 0.55 ? 1 : 0;
+
+// villages: placed on the highest land near each target height
+const VILLAGES = [2650, 3300, 5150, 7350, 7850, 8250].map(y => {
+  let best = -9, bx = 128; const w = weights(y);
+  for (let x = 24; x < 232; x += 4){ const [v, e] = sample(x, y, w); if (e < 0.4 && v > best){ best = v; bx = x; } }
+  return {x:bx, y};
+});
+function treeBlocked(x, y){
+  const R = LEVEL.runway;
+  if (x > R.x0 - 30 && x < R.x1 + 30 && y > R.y0 - 40 && y < R.y1 + 70) return true;
+  return VILLAGES.some(v => (x - v.x)**2 + (y - v.y)**2 < 30*30);
+}
+
+/* ---------- chunk generator: paints 256x128 strips of landscape ---------- */
+const C = {};  // palette as RGB arrays
+Object.entries({
+  grass:'#5cbc45', grass2:'#6dcd52', grass3:'#4ca83c', rim:'#9ae262', high:'#7fb257', high2:'#90c063',
+  sand:'#ecd590', sand2:'#f6e6ae',
+  cliffTop:'#a7a3cf', cliff:'#7d79ab', mortar:'#5e5a8a', cliffBot:'#45416b',
+  rockL:'#b3a9c2', rock:'#8b819f', rockD:'#62597c', snowL:'#ffffff', snow:'#e3ebfb', snowD:'#a9bbe8', summit:'#ffffff', summitEdge:'#2a2d6b',
+  wS:'#3f92f2', wSr:'#68b3fb', wM:'#2c74dc', wMr:'#4c95ee', wD:'#1f58bd', wDr:'#3473d2', wShadow:'#1e4f9e', foam:'#c4e8ff',
+  plank:'#b07a3f', plank2:'#8a5a2b', rail:'#5a3a18', bridgeSh:'#1d4a92',
+  cliffSide:'#6c689b', terr:'#74d457', terr2:'#86e066', asphalt:'#5f6270', asphalt2:'#555866', asEdge:'#2f313b', paint:'#f4f4f4'
+}).forEach(([k, v]) => C[k] = hexi(v));
+
+function cliffCol(kk, ch, x){ const band = Math.floor((kk - 1)/3), off = (band & 1)*3; return kk === 1 ? C.cliffTop : kk === ch ? C.cliffBot : ((x + off) % 6 === 0 || (kk - 1) % 3 === 2) ? C.mortar : C.cliff; }
+const chunks = new Map();
+function genChunk(ci){
+  const M = 12, rows = CH + M + 1, topY = (ci + 1)*CH - 1;
+  const V = new Float32Array(rows*W), E = new Float32Array(rows*W), TI = new Uint8Array(rows*W), CL = new Uint8Array(rows), SA = new Float32Array(rows);
+  for (let k = 0; k < rows; k++){
+    const y = topY - (k - M), w = weights(y);
+    CL[k] = Math.round(w.reduce((s, wi, i) => s + wi*SECTIONS[i].cliff, 0));
+    SA[k] = w.reduce((s, wi, i) => s + wi*SECTIONS[i].sand, 0);
+    for (let x = 0; x < W; x++){ const [v, e] = sample(x, y, w); V[k*W + x] = v; E[k*W + x] = e; TI[k*W + x] = tierAt(x, y, w, v); }
+  }
+  const c = document.createElement('canvas'); c.width = W; c.height = CH;
+  const g = c.getContext('2d'), img = g.createImageData(W, CH), D = img.data;
+  const R = LEVEL.runway, rmid = (R.x0 + R.x1) >> 1;
+  for (let r = 0; r < CH; r++){
+    const k = r + M, y = topY - r, ch = CL[k];
+    for (let x = 0; x < W; x++){
+      const i = k*W + x, v = V[i]; let col;
+      if (v > 0){
+        const e = E[i];
+        if (e > 0.60){
+          const diff = e - E[i - W - (x > 0 ? 1 : 0)];
+          if (e > SUMMIT){
+            const edge = E[i - 1] <= SUMMIT || E[i + 1] <= SUMMIT || E[i - W] <= SUMMIT || E[i + W] <= SUMMIT;
+            col = edge ? C.summitEdge : (hash(x, y) < 0.15 ? C.snow : C.summit);
+          } else if (e > 0.70) col = diff > 0.006 ? C.snowL : diff < -0.006 ? C.snowD : C.snow;
+          else col = diff > 0.006 ? C.rockL : diff < -0.006 ? C.rockD : C.rock;
+        } else if (!TI[i] && (() => { for (let j = 1; j <= ch; j++) if (TI[i - j*W]){ return (col = cliffCol(j, ch, x)), true; } return false; })()){
+          // cliff face below a raised terrace
+        } else {
+          const southWater = V[i + W] <= 0 || (TI[i] && !TI[i + W]);
+          const edge = southWater || V[i - W] <= 0 || (x > 0 && V[i - 1] <= 0) || (x < W - 1 && V[i + 1] <= 0);
+          const h = hash(x, y);
+          if (SA[k] > 0.5 && v < 0.14) col = h < 0.2 ? C.sand2 : C.sand;
+          else if (edge) col = C.rim;
+          else if (e > 0.5) col = h < 0.25 ? C.high2 : C.high;
+          else if (TI[i]) col = h < 0.15 ? C.terr2 : C.terr;
+          else col = h < 0.13 ? C.grass2 : h < 0.19 ? C.grass3 : C.grass;
+        }
+      } else {
+        let kk = 0;
+        for (let j = 1; j <= ch + 3; j++) if (V[i - j*W] > 0){ kk = j; break; }
+        let sideW = 0;
+        if (ch >= 5) for (let j = 1, sw = ch - 3; j <= sw; j++) if ((x - j >= 0 && V[i - j] > 0) || (x + j < W && V[i + j] > 0)){ sideW = j; break; }
+        if (kk && kk <= ch){                       // cliff face below land (3/4 top-down view)
+          col = cliffCol(kk, ch, x);
+        } else if (sideW){                         // steep side wall of the river bank
+          col = sideW === ch - 3 ? C.cliffBot : sideW === 1 ? C.cliffTop : (y % 3 === 0 ? C.mortar : C.cliffSide);
+        } else {
+          const ry = Math.floor(y/4), rx = x + ry*3;
+          const ripple = (y & 3) === 0 && (rx % 7) < 3 && hash(Math.floor(rx/7), ry) < 0.3;
+          col = v > -0.25 ? (ripple ? C.wSr : C.wS) : v > -0.9 ? (ripple ? C.wMr : C.wM) : (ripple ? C.wDr : C.wD);
+          if (kk) col = C.wShadow;
+          const nearLand = (x > 0 && V[i - 1] > 0) || (x < W - 1 && V[i + 1] > 0) || V[i + W] > 0;
+          if (kk === ch + 1 || nearLand) col = C.foam;
+        }
+        for (const B of BRIDGES){
+          const o = y - B.y;
+          if (o >= -2 && o <= 6 && Math.abs(x - B.c) < B.half){
+            col = o < 0 ? C.bridgeSh : (o === 0 || o === 6) ? C.rail : (x % 3 === 0 ? C.plank2 : C.plank);
+          }
+        }
+      }
+      if (x >= R.x0 && x <= R.x1 && y >= R.y0 && y <= R.y1){   // airfield runway
+        col = (x === R.x0 || x === R.x1) ? C.asEdge
+          : (x === R.x0 + 2 || x === R.x1 - 2) ? C.paint
+          : ((x === rmid || x === rmid + 1) && (y % 16) < 8) ? C.paint
+          : ((y < R.y0 + 14 || y > R.y1 - 14) && y > R.y0 + 3 && y < R.y1 - 3 && (x % 4) < 2 && x > R.x0 + 4 && x < R.x1 - 4) ? C.paint
+          : (hash(x, y) < 0.2 ? C.asphalt2 : C.asphalt);
+      }
+      const p = (r*W + x)*4; D[p] = col[0]; D[p+1] = col[1]; D[p+2] = col[2]; D[p+3] = 255;
+    }
+  }
+  g.putImageData(img, 0, 0);
+
+  // stamps: rocks in shallow water, trees, houses, hangars (drawn north to south)
+  const toR = wy => topY - wy;
+  for (let gy = Math.floor((topY - CH + 4)/7); gy <= Math.floor((topY - 4)/7); gy++) for (let gx = 0; gx < W/7; gx++){
+    const x = gx*7 + 2, y = gy*7 + 2, r = toR(y);
+    if (r < 4 || r > CH - 4 || hash(gx + 500, gy) > 0.05) continue;
+    const i = (r + M)*W + x; if (V[i] < -0.22 || V[i] > -0.06 || V[i + 1] > 0 || V[i - W] > 0 || V[i - 3*W] > 0) continue;
+    g.drawImage(ROCK, x - 2, r - 2);
+  }
+  const stamps = [];
+  for (let gy = Math.floor((topY - CH - 10)/5); gy <= Math.floor((topY + 10)/5); gy++) for (let gx = 0; gx <= W/5; gx++){
+    const x = gx*5 + Math.floor(hash(gx, gy)*4), y = gy*5 + Math.floor(hash(gy, gx + 99)*4);
+    const w = weights(y);
+    const thr = w.reduce((s, wi, i) => s + wi*SECTIONS[i].forest, 0);
+    if (fbm(x/36 + 20, y/36, 2) < thr || hash(gx + 7, gy + 3) > 0.88) continue;
+    const [v, e] = sample(x, y, w);
+    if (v < 0.35 || e > 0.55 || treeBlocked(x, y)) continue;
+    if (w[1] > 0.5 && !tierAt(x, y, w, v)){ let face = false; for (let j = 2; j <= 9 && !face; j += 2){ const [v2] = sample(x, y + j, w); face = !!tierAt(x, y + j, w, v2); } if (face) continue; }
+    stamps.push({y, img: (w[2] > 0.5 || e > 0.3) ? PINE : TREE, x: x - 4, ox:4});
+  }
+  for (const vl of VILLAGES){
+    if (vl.y < topY - CH - 30 || vl.y > topY + 30) continue;
+    for (let a = 0; a < 9; a++){
+      const hx = vl.x + Math.round((hash(a, vl.y) - 0.5)*44), hy = vl.y + Math.round((hash(vl.y, a) - 0.5)*44);
+      if (terrainAt(hx, hy)[0] < 0.25) continue;
+      stamps.push({y:hy, img:HOUSE[a % 2], x:hx - 4, ox:3});
+    }
+  }
+  for (const hy of [R.y0 + 90, R.y0 + 150, R.y0 + 250]) if (hy <= topY + 12 && hy >= topY - CH - 12) stamps.push({y:hy, img:HANGAR, x:R.x1 + 14, ox:4});
+  stamps.sort((a, b) => b.y - a.y);
+  for (const s of stamps) g.drawImage(s.img, s.x, toR(s.y) - s.ox);
+  return c;
+}
+function getChunk(ci){ let c = chunks.get(ci); if (!c){ c = genChunk(ci); chunks.set(ci, c); } return c; }
+
+/* ---------- clouds (same shape in day, sunset and storm palettes) ---------- */
+function cloudMask(w, h, seed){
+  let s = seed; const rnd = () => (s = (s*16807) % 2147483647)/2147483647;
+  const puffs = []; const n = 4 + Math.floor(rnd()*3);
+  for (let i = 0; i < n; i++){ const r = h*(0.22 + rnd()*0.2); puffs.push([r + rnd()*(w - 2*r), r + rnd()*(h - 2*r), r]); }
+  puffs.push([w/2, h/2, h*0.36]);
+  const m = new Uint8Array(w*h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) m[y*w + x] = puffs.some(([px, py, r]) => (x - px)**2 + (y - py)**2 <= r*r) ? 1 : 0;
+  return {w, h, m};
+}
+function paintCloud(M, P){
+  const c = document.createElement('canvas'); c.width = M.w; c.height = M.h; const g = c.getContext('2d');
+  const at = (x, y) => x >= 0 && y >= 0 && x < M.w && y < M.h && M.m[y*M.w + x];
+  for (let y = 0; y < M.h; y++) for (let x = 0; x < M.w; x++){
+    if (at(x, y)){ g.fillStyle = !at(x, y + 3) || !at(x + 2, y + 2) ? P[2] : !at(x - 2, y - 2) ? P[0] : P[1]; g.fillRect(x, y, 1, 1); }
+    else if (at(x-1, y) || at(x+1, y) || at(x, y-1) || at(x, y+1)){ g.fillStyle = P[3]; g.fillRect(x, y, 1, 1); }
+  }
+  return c;
+}
+const CP = {day:['#ffffff','#eef6ff','#cfe3fa','#9cbde6'], dusk:['#fff0ea','#ffd3c9','#f2a6b6','#c47f9e'], storm:['#8d90aa','#6f7290','#55587a','#33354d'], shadow:['#061428','#061428','#061428','#061428']};
+let cseed = 11;
+const CLOUD_SHAPES = Array.from({length:6}, () => {
+  const M = cloudMask(randi(40, 74), randi(22, 34), (cseed += 7919));
+  return {w:M.w, h:M.h, day:paintCloud(M, CP.day), dusk:paintCloud(M, CP.dusk), sh:paintCloud(M, CP.shadow)};
+});
+const STORM_SHAPES = Array.from({length:3}, () => {
+  const M = cloudMask(randi(56, 70), randi(34, 42), (cseed += 104729));
+  return {w:M.w, h:M.h, img:paintCloud(M, CP.storm), sh:paintCloud(M, CP.shadow)};
+});
+
+/* ---------- lighting keyframes along the level (palette-style tints) ---------- */
+const LIGHT = [
+  {d:0,    tint:[255,236,212], haze:[255,214,160], hazeA:0.42, sh:[-10,9], dusk:0, glow:[255,200,120], glowA:0.20},
+  {d:2300, tint:[255,255,255], haze:[214,238,255], hazeA:0.30, sh:[4,10],  dusk:0, glow:[255,255,255], glowA:0},
+  {d:4900, tint:[226,234,255], haze:[205,220,245], hazeA:0.62, sh:[9,10],  dusk:0, glow:[200,220,255], glowA:0.08},
+  {d:6700, tint:[238,236,255], haze:[220,222,245], hazeA:0.45, sh:[12,9],  dusk:0.1, glow:[255,220,200], glowA:0.06},
+  {d:7500, tint:[255,200,176], haze:[255,150,118], hazeA:0.55, sh:[18,8],  dusk:0.85, glow:[255,120,140], glowA:0.22},
+  {d:9000, tint:[240,172,172], haze:[255,118,150], hazeA:0.60, sh:[22,6],  dusk:1, glow:[255,100,150], glowA:0.26}];
+function lightAt(d){
+  let i = 0; while (i < LIGHT.length - 2 && d > LIGHT[i+1].d) i++;
+  const A = LIGHT[i], B = LIGHT[i+1], t = sstep(A.d, B.d, d);
+  return {tint:mix(A.tint, B.tint, t), haze:mix(A.haze, B.haze, t), hazeA:lerp(A.hazeA, B.hazeA, t), sh:mix(A.sh, B.sh, t),
+          dusk:lerp(A.dusk, B.dusk, t), glow:mix(A.glow, B.glow, t), glowA:lerp(A.glowA, B.glowA, t)};
+}
+
+/* ---------- state ---------- */
+let mode = 'menu', time = 0, camY = 0, scroll = 0, menuCam = 0;
+let score = 0, lives = 3, fuel = 100, kills = 0, hiScore = 0, landing = 0, endReason = '';
+const player = {x:W/2, y:H*0.78, vx:0, vy:0, bank:0, inv:0, alive:true, dead:0, fireCD:0, power:0, boost:false};
+let bullets = [], eBullets = [], enemies = [], storms = [], pickups = [], fx = [], parts = [], texts = [], boats = [];
+let ships = [], shipT = 2, hostileCount = 0, hornT = 0;
+let clouds = [], banner = null, shake = 0, section = -1, spawnT = 2, stormT = 6, balloonT = 4, crateT = 8, bombersDone = 0;
+const formations = {};
+let formId = 0, light = lightAt(0);
+const BOMBER_AT = [1500, 4000, 6500, 8000];
+const listeners = {}; const emit = (e, d) => (listeners[e] || []).forEach(f => f(d));
+const sfx = name => emit('sfx', name);   // sound requests; the audio module decides how (or whether) to play them
+try { hiScore = +localStorage.getItem('horizonace.hi') || 0; } catch(e){}
+
+const Input = {up:0, down:0, left:0, right:0, fire:0, boost:0};
+const KEYS = {ArrowUp:'up',KeyW:'up',ArrowDown:'down',KeyS:'down',ArrowLeft:'left',KeyA:'left',ArrowRight:'right',KeyD:'right',
+              Space:'fire',KeyJ:'fire',ShiftLeft:'boost',ShiftRight:'boost',KeyK:'boost'};
+addEventListener('keydown', e => { const k = KEYS[e.code]; if (k){ Input[k] = 1; e.preventDefault(); } });
+addEventListener('keyup', e => { const k = KEYS[e.code]; if (k){ Input[k] = 0; e.preventDefault(); } });
+addEventListener('blur', () => { for (const k in Input) Input[k] = 0; });
+
+function initClouds(){
+  clouds = [];
+  for (let i = 0; i < 5; i++) clouds.push({hi:false, s:randi(0, 5), x:rand(-30, W - 20), y:rand(-40, H)});
+  for (let i = 0; i < 3; i++) clouds.push({hi:true,  s:randi(0, 5), x:rand(-30, W - 20), y:rand(-40, H)});
+}
+function initBoats(){
+  boats = [];
+  for (let n = 0; n < 60 && boats.length < 12; n++){
+    const y = n % 3 === 2 ? rand(7100, 8100) : rand(150, 2100), x = rand(16, 240);
+    if (terrainAt(x, y)[0] < -0.5) boats.push({x, y, vx:rand(3, 7)*(Math.random() < 0.5 ? -1 : 1)});
+  }
+}
+initClouds(); initBoats();
+
+/* ---------- spawning ---------- */
+const progress = () => clamp(camY/LEVEL.len, 0, 1);
+function addEnemy(type, x, y, beh, extra = {}){
+  const D = DEFS[type];
+  const e = Object.assign({type, D, x, y, x0:x, vx:0, vy:0, hp:D.hp, t:0, beh, flash:0, fireCD:rand(0.8, 1.8)}, extra);
+  enemies.push(e); return e;
+}
+function formation(n){ const id = ++formId; formations[id] = {n, killed:0, broken:false}; return id; }
+function spawnWave(){
+  const d = progress(), sec = section;
+  const opts = [['line', 3], ['v', 3], ['sine', 2], ['diver', 1 + 2*d], ['sweep', sec >= 1 ? 2 : 0.5]];
+  let tot = opts.reduce((s, o) => s + o[1], 0), r = Math.random()*tot, kind = 'line';
+  for (const [k, w] of opts){ if ((r -= w) < 0){ kind = k; break; } }
+  const sp = Math.min(150, 62 + 45*d);
+  if (kind === 'line'){
+    const x = rand(30, W - 30), n = 4, id = formation(n);
+    for (let i = 0; i < n; i++) addEnemy('scout', x, -14 - i*16, 'straight', {vy:sp, form:id});
+  } else if (kind === 'v'){
+    const x = rand(50, W - 50), n = 5, id = formation(n);
+    for (let i = 0; i < n; i++){ const k = Math.ceil(i/2), s = i % 2 ? 1 : -1; addEnemy('scout', x + s*k*16, -14 - k*12, 'straight', {vy:sp*0.9, form:id}); }
+  } else if (kind === 'sine'){
+    const x = rand(60, W - 60), n = 3, id = formation(n);
+    for (let i = 0; i < n; i++) addEnemy('scout', x, -14 - i*20, 'sine', {vy:sp*0.75, amp:rand(30, 50), ph:i*0.7, form:id});
+  } else if (kind === 'diver'){
+    addEnemy('fighter', rand(30, W - 30), -14, 'dive', {vy:55});
+    if (d > 0.4) addEnemy('fighter', rand(30, W - 30), -40, 'dive', {vy:55});
+  } else {
+    const left = Math.random() < 0.5, n = 3, id = formation(n);
+    for (let i = 0; i < n; i++) addEnemy('fighter', left ? -12 - i*18 : W + 12 + i*18, 30 + i*10, 'sweep', {vx:(left ? 1 : -1)*(70 + 30*d), vy:30, form:id});
+  }
+}
+function spawnUpdate(dt){
+  if (landing || camY > LEVEL.landAt - 380) return;
+  const d = progress();
+  spawnT -= dt;
+  if (spawnT <= 0 && enemies.length < 24){ spawnWave(); spawnT = rand(lerp(2.6, 1.2, d), lerp(3.6, 1.8, d)); }
+  if (bombersDone < BOMBER_AT.length && camY >= BOMBER_AT[bombersDone]){
+    bombersDone++; addEnemy('bomber', rand(70, W - 70), -20, 'bomber', {});
+    texts.push({x:W/2, y:70, t:'BOMBER INBOUND!', c:'#ff6b6b', life:2, big:true}); sfx('alert');
+  }
+  if (section === 1 || section === 3){
+    balloonT -= dt;
+    if (balloonT <= 0){ const n = randi(2, 3); for (let i = 0; i < n; i++) addEnemy('balloon', rand(24, W - 24), -20 - i*rand(20, 60), 'balloon', {ph:rand(0, 6)}); balloonT = rand(5, 8); }
+  }
+  if (section === 2 || section === 3 || (section === 0 && d > 0.15)){
+    stormT -= dt;
+    if (stormT <= 0){ const s = pick(STORM_SHAPES); storms.push({s, x:rand(-10, W - s.w + 10), y:-s.h - 4, drift:rand(-6, 6), flash:0}); stormT = rand(section === 2 ? 5 : 7, section === 2 ? 8 : 11); }
+  }
+  crateT -= dt;
+  if (crateT <= 0){ pickups.push({type: Math.random() < 0.25 ? 'power' : 'fuel', x:rand(24, W - 24), y:-20, t:0}); crateT = rand(8, 12); }
+}
+
+/* ---------- combat helpers ---------- */
+function fireAt(x, y, ang, spd){ eBullets.push({x, y, vx:Math.cos(ang)*spd, vy:Math.sin(ang)*spd}); }
+const aim = (x, y) => Math.atan2(player.y - y, player.x - x);
+const MAX_PARTS = 320;
+const addPart = p => { if (parts.length < MAX_PARTS) parts.push(p); };
+function explode(x, y, size, big){
+  fx.push({x, y, t:0, size, big});
+  const cols = ['#fff6a8','#ffd23f','#ff8c1a','#e63946','#8a8fa3'];
+  for (let i = 0; i < (big ? 22 : 8); i++) addPart({x, y, vx:rand(-1, 1)*size*8, vy:rand(-1, 1)*size*8, life:rand(0.3, 0.8), c:pick(cols)});
+}
+function smoke(x, y, n){ for (let i = 0; i < n; i++) addPart({x:x + rand(-4, 4), y:y + rand(-4, 4), vx:rand(-8, 8), vy:rand(-16, -4), life:rand(0.8, 1.4), max:1.4, c:pick(['#7a7f93','#5f6475']), smoke:true}); }
+function impact(x, y){   // bullet hit: tiny white flash + sparks
+  fx.push({kind:'spark', x, y, t:0});
+  for (let i = 0; i < 4; i++) addPart({x, y, vx:rand(-70, 70), vy:rand(-90, 10), life:rand(0.12, 0.25), c:pick(['#ffffff','#fff6a8','#ffd23f'])});
+  sfx('hit');
+}
+function blast(e){        // destruction effect sized to the target
+  if (e.type === 'bomber'){
+    explode(e.x, e.y, 16, true); smoke(e.x, e.y, 12); shake = 0.45; sfx('explodeBig');
+    for (let i = 1; i <= 4; i++) fx.push({x:e.x + rand(-16, 16), y:e.y + rand(-9, 9), t:-i*0.16, size:rand(8, 12), big:false});
+  } else if (e.type === 'fighter'){ explode(e.x, e.y, 10, false); smoke(e.x, e.y, 5); sfx('explode'); }
+  else if (e.type === 'balloon'){
+    explode(e.x, e.y, 6, false); sfx('pop');
+    for (let i = 0; i < 10; i++) addPart({x:e.x, y:e.y, vx:rand(-55, 55), vy:rand(-60, 30), life:rand(0.5, 0.9), c:pick(['#c7ccd6','#8a92a3','#e63946']), g:70});
+  } else { explode(e.x, e.y, 7, false); smoke(e.x, e.y, 3); sfx('explode'); }
+}
+function waterBlast(x, y){ // hostile ship destroyed: blast + water column + expanding foam ring
+  explode(x, y, 10, false); smoke(x, y, 5); fx.push({kind:'splash', x, y, t:0}); sfx('splash');
+  for (let i = 0; i < 16; i++) addPart({x:x + rand(-6, 6), y, vx:rand(-35, 35), vy:rand(-85, -25), life:rand(0.5, 0.9), c:pick(['#ffffff','#e8f6ff','#9fd3ff','#3f92f2']), g:150});
+}
+const bulletBox = b => ({x:Math.min(b.x, b.px) - 1.5, y:Math.min(b.y, b.py) - 3, w:Math.abs(b.x - b.px) + 3, h:Math.abs(b.y - b.py) + 6});  // swept: no tunnelling at low frame rates
+function addScore(n, x, y, c = '#ffd23f'){ score += n; if (x !== undefined) texts.push({x, y, t:'+' + n, c, life:0.9}); }
+function killPlayer(reason){
+  if (!player.alive || player.inv > 0 || landing || mode !== 'playing') return;
+  player.alive = false; player.dead = 1.4; lives--; endReason = reason;
+  explode(player.x, player.y, 14, true); smoke(player.x, player.y, 8); shake = 0.45; eBullets = []; sfx('damage');
+  texts.push({x:W/2, y:H/2 - 30, t:reason, c:'#ff6b6b', life:1.4, big:true});
+}
+const pBox = () => ({x:player.x - 4, y:player.y - 4, w:8, h:8});
+const eBox = e => { const w = e.D.w, h = e.D.h; return {x:e.x - w*0.33, y:e.y - h*0.33, w:w*0.66, h:h*0.66}; };
+
+/* ---------- update ---------- */
+function update(dt){
+  time += dt;
+  const playing = mode === 'playing';
+  if (mode === 'menu'){ menuCam = (menuCam + 40*dt) % (LEVEL.len - 400); camY = menuCam; scroll = 40; }
+  else if (playing){
+    const boosting = Input.boost && player.alive && !landing && fuel > 0;
+    player.boost = boosting;
+    const target = landing ? 0 : boosting ? 92 : 50;
+    scroll += clamp(target - scroll, -60*dt, 120*dt);
+    camY += scroll*dt;
+    if (!landing) score += scroll*dt/4 + 4*dt;     // distance + survival points
+  }
+  light = lightAt(camY);
+  const sec = weights(camY + H*0.5).reduce((bi, w, i, a) => w > a[bi] ? i : bi, 0);
+  if (sec !== section){ section = sec; if (playing) banner = {t:3, title:SECTIONS[sec].name, sub:SECTIONS[sec].sub}; }
+
+  // pre-generate the next strip of landscape, at most one per frame
+  const nextCi = Math.floor((camY + H + CH)/CH);
+  if (!chunks.has(nextCi)) getChunk(nextCi);
+
+  // clouds and boats
+  for (const c of clouds){
+    c.y += scroll*(c.hi ? 1.7 : 1.2)*dt + (c.hi ? 6 : 3)*dt;
+    if (c.y > H + 40){ c.y = -CLOUD_SHAPES[c.s].h - rand(10, 160); c.x = rand(-30, W - 20); c.s = randi(0, 5); }
+  }
+  for (const b of boats){
+    const nx = b.x + b.vx*dt, sgn = Math.sign(b.vx);
+    if (terrainAt(nx + sgn*6, b.y)[0] > -0.15) b.vx = -b.vx; else b.x = nx;
+    if (b.x < -10 || b.x > W + 10){ const wx = b.x < -10 ? W + 8 : -8; if (terrainAt(wx, b.y)[0] < -0.15) b.x = wx; else b.vx = -b.vx; }
+  }
+
+  if (playing){
+    if (player.alive && !landing) updatePlayer(dt);
+    else if (!player.alive){
+      player.dead -= dt;
+      if (player.dead <= 0){
+        if (lives > 0){ Object.assign(player, {alive:true, inv:2.4, x:W/2, y:H*0.8, vx:0, vy:0, power:0}); fuel = Math.max(fuel, 70); }
+        else return endGame(false);
+      }
+    }
+    if (landing) updateLanding(dt);
+    else if (camY >= LEVEL.landAt && player.alive){ landing = 0.001; banner = {t:3, title:'LANDING', sub:'Welcome home, Ace!'}; enemies = enemies.filter(e => e.y > -10); eBullets = []; }
+    spawnUpdate(dt);
+  }
+  updateObjects(dt, playing);
+  if (banner){ banner.t -= dt; if (banner.t <= 0) banner = null; }
+  shake = Math.max(0, shake - dt);
+}
+function updatePlayer(dt){
+  const ix = Input.right - Input.left, iy = Input.down - Input.up;
+  const ACC = 900, MAX = 120, DRAG = 8;
+  if (ix) player.vx += ix*ACC*dt; else player.vx -= player.vx*Math.min(1, DRAG*dt);
+  if (iy) player.vy += iy*ACC*dt; else player.vy -= player.vy*Math.min(1, DRAG*dt);
+  player.vx = clamp(player.vx, -MAX, MAX); player.vy = clamp(player.vy, -MAX, MAX);
+  player.x = clamp(player.x + player.vx*dt, 10, W - 10);
+  player.y = clamp(player.y + player.vy*dt, 70, H - 14);
+  if (player.x <= 10 || player.x >= W - 10) player.vx = 0;
+  if (player.y <= 70 || player.y >= H - 14) player.vy = 0;
+  player.bank = player.vx < -40 ? -1 : player.vx > 40 ? 1 : 0;
+  player.inv = Math.max(0, player.inv - dt);
+  player.power = Math.max(0, player.power - dt);
+  player.muzzle = Math.max(0, (player.muzzle || 0) - dt);
+  fuel -= (player.boost ? 3.6 : 1.5)*dt;
+  if (fuel <= 0){ fuel = 0; killPlayer('OUT OF FUEL'); }
+  player.fireCD -= dt;
+  if (Input.fire && player.fireCD <= 0 && bullets.length < 60){
+    player.fireCD = 0.13; player.muzzle = 0.06; sfx('shoot');
+    if (player.power > 0) [-0.2, 0, 0.2].forEach(a => bullets.push({x:player.x, y:player.y - 8, px:player.x, py:player.y - 8, vx:Math.sin(a)*300, vy:-Math.cos(a)*300}));
+    else [-3, 3].forEach(o => bullets.push({x:player.x + o, y:player.y - 8, px:player.x + o, py:player.y - 8, vx:0, vy:-300}));
+  }
+  // dangerous terrain: the highest snowy summits reach flight level
+  const wy = camY + (H - 1 - player.y);
+  for (const [ox, oy] of [[0, 0], [-3, 0], [3, 0], [0, -3]]) if (terrainAt(player.x + ox, wy - oy)[1] > SUMMIT){ killPlayer('HIT A SUMMIT'); break; }
+}
+function updateLanding(dt){
+  landing += dt;
+  player.x = lerp(player.x, (LEVEL.runway.x0 + LEVEL.runway.x1)/2 + 0.5, Math.min(1, dt*2));
+  player.y = lerp(player.y, H*0.62, Math.min(1, dt*1.2));
+  player.bank = 0; player.vx = player.vy = 0;
+  if (landing > 3.2) endGame(true);
+}
+function updateObjects(dt, playing){
+  const d = progress(), pb = pBox(), bspd = Math.min(150, 85 + 55*d);
+  for (const b of bullets){ b.px = b.x; b.py = b.y; b.x += b.vx*dt; b.y += b.vy*dt; }
+  bullets = bullets.filter(b => b.y > -10 && b.x > -10 && b.x < W + 10 && !b.dead);
+  for (const b of eBullets){ b.x += b.vx*dt; b.y += b.vy*dt; if (playing && player.alive && overlap(pb, {x:b.x - 1, y:b.y - 1, w:3, h:3})){ b.dead = true; killPlayer('SHOT DOWN'); } }
+  eBullets = eBullets.filter(b => !b.dead && b.y > -10 && b.y < H + 10 && b.x > -10 && b.x < W + 10);
+
+  for (const e of enemies){
+    e.t += dt; e.flash = Math.max(0, e.flash - dt);
+    switch (e.beh){
+      case 'straight': e.y += e.vy*dt; break;
+      case 'sine': e.y += e.vy*dt; e.x = e.x0 + Math.sin(e.t*2.2 + e.ph)*e.amp; break;
+      case 'dive':
+        if (e.t < 0.9) e.y += e.vy*dt;
+        else { e.vx = clamp(e.vx + Math.sign(player.x - e.x)*140*dt, -75, 75); e.vy = Math.min(e.vy + 70*dt, 135); e.x += e.vx*dt; e.y += e.vy*dt; }
+        break;
+      case 'sweep': e.x += e.vx*dt; e.y += e.vy*dt; e.vy += 26*dt; break;
+      case 'bomber': e.y += (e.y < 90 ? 26 : e.t < 18 ? 3 : 40)*dt; e.x = e.x0 + Math.sin(e.t*0.5)*34; break;
+      case 'balloon': e.y += scroll*dt; e.x = e.x0 + Math.sin(e.t*1.3 + e.ph)*4; break;
+    }
+    // enemy fire
+    if (playing && player.alive && !landing && e.y > 10 && e.y < H*0.62){
+      e.fireCD -= dt;
+      if (e.fireCD <= 0){
+        if (e.type === 'fighter'){ fireAt(e.x, e.y + 6, aim(e.x, e.y), bspd); sfx('enemyShot'); e.fireCD = rand(1.3, 2.2)/(0.7 + 0.6*d); }
+        else if (e.type === 'bomber'){ const a = aim(e.x, e.y); for (let k = -2; k <= 2; k++) fireAt(e.x, e.y + 10, a + k*0.24, bspd*0.85); sfx('enemyShot'); e.fireCD = rand(1.5, 2.1); }
+        else if (e.type === 'scout' && d > 0.35 && Math.random() < 0.35){ fireAt(e.x, e.y + 5, aim(e.x, e.y), bspd*0.9); e.fireCD = rand(3, 5); }
+        else e.fireCD = rand(2, 4);
+      }
+    }
+    // hits from player bullets
+    const eb = eBox(e);
+    for (const b of bullets){
+      if (b.dead || !overlap(eb, bulletBox(b))) continue;
+      b.dead = true; e.hp--; e.flash = 0.06; impact(b.x, Math.max(b.y, eb.y + eb.h*0.5));
+      if (e.hp <= 0 && !e.dead){
+        e.dead = true; kills++; addScore(e.D.score, e.x, e.y - 6);
+        blast(e);
+        if (e.type === 'bomber'){ pickups.push({type:'fuel', x:e.x - 12, y:e.y, t:0}, {type:'power', x:e.x + 12, y:e.y, t:0}); }
+        else if (e.type === 'fighter' && Math.random() < 0.15) pickups.push({type:'fuel', x:e.x, y:e.y, t:0});
+        if (e.form){ const f = formations[e.form]; f.killed++; if (f.killed === f.n && !f.broken) addScore(500, e.x, e.y + 8, '#7dd3fc'); }
+        break;
+      }
+    }
+    if (playing && player.alive && !e.dead && overlap(pb, eb)){
+      killPlayer(e.type === 'balloon' ? 'HIT A BALLOON' : 'MID-AIR CRASH');
+      if (e.type !== 'bomber'){ e.dead = true; blast(e); }
+    }
+    if (Math.abs(e.vx) > 170) e.vx = Math.sign(e.vx)*170;
+    if (!e.dead && (e.y > H + 30 || e.x < -60 || e.x > W + 60)){ e.dead = true; e.gone = true; if (e.form) formations[e.form].broken = true; }
+  }
+  enemies = enemies.filter(e => !e.dead);
+
+  for (const s of storms){
+    s.y += scroll*1.1*dt; s.x += s.drift*dt;
+    s.flash = Math.max(0, s.flash - dt); if (Math.random() < dt/1.6) s.flash = 0.25;
+    const core = {x:s.x + s.s.w*0.25, y:s.y + s.s.h*0.28, w:s.s.w*0.5, h:s.s.h*0.44};
+    if (playing && player.alive && overlap(pb, core)) killPlayer('STRUCK BY STORM');
+  }
+  storms = storms.filter(s => s.y < H + 10);
+
+  for (const p of pickups){
+    p.t += dt; p.y += (34 + scroll*0.3)*dt; p.x += Math.sin(p.t*2)*8*dt;
+    if (playing && player.alive && overlap({x:player.x - 8, y:player.y - 8, w:16, h:16}, {x:p.x - 5, y:p.y - 5, w:10, h:10})){
+      p.dead = true;
+      sfx(p.type);
+      if (p.type === 'fuel'){ fuel = Math.min(100, fuel + 35); texts.push({x:p.x, y:p.y - 8, t:'FUEL +35', c:'#ffd23f', life:1}); }
+      else { player.power = 14; texts.push({x:p.x, y:p.y - 8, t:'TRIPLE SHOT', c:'#7dd3fc', life:1}); }
+      addScore(50);
+    }
+  }
+  pickups = pickups.filter(p => !p.dead && p.y < H + 12);
+
+  updateShips(dt, playing);
+  for (const f of fx) f.t += dt;
+  fx = fx.filter(f => f.t < (f.kind === 'spark' ? 0.08 : f.kind === 'splash' ? 0.9 : f.big ? 1.1 : 0.7));
+  for (const p of parts){ p.vy += (p.g || 0)*dt; p.x += p.vx*dt; p.y += p.vy*dt + scroll*dt; p.life -= dt; }
+  parts = parts.filter(p => p.life > 0);
+  for (const t of texts){ t.y -= 18*dt; t.life -= dt; }
+  texts = texts.filter(t => t.life > 0);
+}
+/* ---------- ships ---------- */
+function oceanAmount(){ const w = weights(camY + H*0.5); return clamp(w[0] + w[3]*0.7, 0, 1); }
+function laneWater(x, wy, hh){ for (const dy of [-2, hh*0.5, hh + 2]) if (terrainAt(x, wy - dy)[0] > -0.1) return false; return true; }
+// Plan a crossing: enter at the screen edge (or leave the shore in the harbour) and only ever sail over
+// open water for as long as the ship will be on screen.
+function planLane(T, top, dir, speed){
+  const wy = camY + (H - 1 - top);
+  let entry = dir > 0 ? 0 : W - 1, fromShore = false;
+  if (!laneWater(entry, wy, T.h)){
+    fromShore = true; let x = entry, n = 0;
+    while (n < 26 && !laneWater(x, wy, T.h)){ x += dir*4; n++; }
+    if (n >= 26) return null;
+    entry = x + dir*4;
+  }
+  const hullStart = fromShore ? entry : (dir > 0 ? -T.w - 2 : W + 2);         // left x of the hull
+  const x0 = dir > 0 ? hullStart : hullStart - (fromShore ? T.w : 0);
+  const travel = speed*((H + 10 - top)/48) + T.w;
+  for (let k = 0; k <= travel; k += 4){
+    const cx = dir > 0 ? Math.max(0, x0) + k : Math.min(W - 1, x0 + T.w) - k;
+    if (cx < -4 || cx > W + 4) break;                                          // beyond the screen edge: gone
+    if (!laneWater(cx, wy, T.h)) return null;
+  }
+  return {wy, x:x0, fromShore};
+}
+function spawnShip(force){
+  const canHostile = mode === 'playing' && !landing && hostileCount < 5 && camY > 500 && !ships.some(s => s.T.hostile && !s.sink);
+  const type = force || (canHostile && Math.random() < 0.3 ? 'gunboat' : pick(['fishing', 'fishing', 'cargo', 'patrol', 'liner']));
+  const T = SHIPS[type];
+  for (let i = 0; i < 14; i++){
+    const top = rand(36, H*0.6), dir = Math.random() < 0.5 ? 1 : -1, speed = rand(T.speed[0], T.speed[1]);
+    if (ships.some(s => Math.abs(sy(s.wy) - top) < 28)) continue;
+    const lane = planLane(T, top, dir, speed); if (!lane) continue;
+    const s = {T, type, dir, x:lane.x, wy:lane.wy, sy:top, vx:dir*speed, hp:T.hp || 0, flash:0, fireCD:rand(1.2, 2.2), sink:0, fade:lane.fromShore ? 0 : 1};
+    ships.push(s);
+    if (T.hostile){ hostileCount++; texts.push({x:W/2, y:90, t:'ENEMY GUNBOAT!', c:'#ff6b6b', life:1.6, big:true}); }
+    if (T.big && hornT <= 0){ sfx('horn'); hornT = 9; }
+    return s;
+  }
+  return null;
+}
+function updateShips(dt, playing){
+  hornT -= dt;
+  if (oceanAmount() > 0.5 && !landing){ shipT -= dt; if (shipT <= 0){ shipT = rand(2.5, 5); if (ships.length < 4) spawnShip(); } }
+  const d = progress();
+  for (const s of ships){
+    s.sy = sy(s.wy); s.flash = Math.max(0, s.flash - dt); s.fade = Math.min(1, s.fade + dt*1.5);
+    const bowX = s.dir > 0 ? s.x + s.T.w + 3 : s.x - 3;
+    if (!s.sink && bowX > 0 && bowX < W && terrainAt(bowX, s.wy - s.T.h*0.5)[0] > -0.1) s.vx *= Math.max(0, 1 - 3*dt);   // safety: never run aground
+    s.x += s.vx*dt;
+    if (s.sink){ s.sink += dt; continue; }
+    if (!s.T.hostile) continue;       // civilian ships are scenery: bullets pass over them
+    if (playing && player.alive && !landing && s.sy > 20 && s.sy < H*0.7){
+      s.fireCD -= dt;
+      if (s.fireCD <= 0){
+        const cx = s.x + s.T.w*(s.dir > 0 ? 0.72 : 0.28), cy = s.sy + s.T.h/2;
+        fireAt(cx, cy, aim(cx, cy), Math.min(130, 75 + 40*d)); sfx('enemyShot'); s.fireCD = rand(2, 3);
+      }
+    }
+    const box = {x:s.x + 3, y:s.sy + 2, w:s.T.w - 6, h:s.T.h - 4};
+    for (const b of bullets){
+      if (b.dead || !overlap(box, bulletBox(b))) continue;
+      b.dead = true; s.hp--; s.flash = 0.06; impact(b.x, b.y);
+      if (s.hp <= 0){ s.sink = 0.001; kills++; addScore(s.T.score, s.x + s.T.w/2, s.sy - 4); waterBlast(s.x + s.T.w/2, s.sy + s.T.h/2); break; }
+    }
+  }
+  ships = ships.filter(s => s.sink < 1.6 && s.sy < H + 24 && (s.dir > 0 ? s.x < W + 4 : s.x > -s.T.w - 4));
+}
+function endGame(won){
+  if (mode !== 'playing') return;
+  let bonus = 0;
+  if (won){ bonus = 5000 + lives*1000 + Math.round(fuel)*10; score += bonus; }
+  const s = Math.floor(score), isHi = s > hiScore;
+  if (isHi){ hiScore = s; try { localStorage.setItem('horizonace.hi', String(s)); } catch(e){} }
+  mode = won ? 'complete' : 'over'; emit('mode', mode); sfx(won ? 'landing' : 'gameover');
+  emit('end', {won, score:s, hi:hiScore, isHi, distance:(Math.min(camY, LEVEL.len)/1000).toFixed(1), kills, lives, bonus, reason: won ? 'Safe landing at the harbour airfield' : endReason});
+}
+
+/* ---------- rendering ---------- */
+const sy = wy => H - 1 - (wy - Math.floor(camY));        // world y → screen y
+function drawTerrain(){
+  const c0 = Math.floor(camY/CH), c1 = Math.floor((camY + H)/CH);
+  for (let ci = c0; ci <= c1; ci++) ctx.drawImage(getChunk(ci), 0, sy((ci + 1)*CH - 1));
+}
+function drawCloud(c, alpha){
+  const S = CLOUD_SHAPES[c.s], x = Math.round(c.x), y = Math.round(c.y);
+  ctx.globalAlpha = alpha*(1 - light.dusk); ctx.drawImage(S.day, x, y);
+  if (light.dusk > 0.01){ ctx.globalAlpha = alpha*light.dusk; ctx.drawImage(S.dusk, x, y); }
+  ctx.globalAlpha = 1;
+}
+function drawShadows(){
+  const [sx, sy2] = light.sh;
+  ctx.globalAlpha = 0.17;
+  for (const c of clouds){ const k = c.hi ? 3.2 : 1.8; ctx.drawImage(CLOUD_SHAPES[c.s].sh, Math.round(c.x + sx*k), Math.round(c.y + sy2*k)); }
+  for (const s of storms) ctx.drawImage(s.s.sh, Math.round(s.x + sx*2), Math.round(s.y + sy2*2));
+  ctx.globalAlpha = 0.28;
+  for (const e of enemies){ const k = e.type === 'balloon' ? 0.5 : 0.75; ctx.drawImage(e.D.sh, Math.round(e.x - e.D.w/2 + sx*k), Math.round(e.y - e.D.h/2 + sy2*k)); }
+  if (mode !== 'menu' && player.alive){
+    const k = landing ? Math.max(0, 1 - landing/3) : 1;
+    ctx.globalAlpha = 0.3 + 0.2*(1 - k);
+    ctx.drawImage(PLAYER_SHADOW, Math.round(player.x - 8 + sx*1.1*k), Math.round(player.y - 8 + sy2*1.1*k));
+  }
+  ctx.globalAlpha = 1;
+}
+function drawAtmosphere(){
+  // palette tint for time of day
+  const t = light.tint;
+  if (t[0] + t[1] + t[2] < 762){ ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = rgb(t); ctx.fillRect(0, 0, W, H); ctx.globalCompositeOperation = 'source-over'; }
+  // stepped haze toward the horizon (top of screen)
+  for (let i = 0; i < 10; i++){ ctx.fillStyle = `rgba(${light.haze.map(v => v|0).join(',')},${light.hazeA*(1 - i/10)*0.9})`; ctx.fillRect(0, i*7, W, 7); }
+  // stepped sun glow (morning gold / sunset pink)
+  if (light.glowA > 0.01){
+    ctx.globalCompositeOperation = 'screen';
+    for (let i = 0; i < 8; i++){ ctx.fillStyle = `rgba(${light.glow.map(v => v|0).join(',')},${light.glowA*(1 - i/8)})`; ctx.fillRect(0, i*12, W, 12); }
+    ctx.globalCompositeOperation = 'source-over';
+  }
+}
+function drawEnemies(){
+  for (const e of enemies){
+    const img = e.flash > 0 ? e.D.hit : e.D.spr;
+    ctx.drawImage(img, Math.round(e.x - e.D.w/2), Math.round(e.y - e.D.h/2));
+  }
+}
+function drawStorms(){
+  for (const s of storms){
+    const x = Math.round(s.x), y = Math.round(s.y);
+    ctx.drawImage(s.s.img, x, y);
+    if (s.flash > 0 && Math.floor(time*30) % 2){
+      ctx.fillStyle = '#fff6a8';
+      let bx = x + (s.s.w >> 1), by = y + 8;
+      for (let i = 0; i < 6; i++){ ctx.fillRect(bx, by, 2, 3); bx += randi(-2, 2); by += 3; }
+    }
+  }
+}
+function drawPlayer(){
+  if (mode === 'menu' || !player.alive) return;
+  if (player.inv > 0 && Math.floor(time*14) % 2) return;
+  const spr = PLAYER_SPR[player.bank + 1][Math.floor(time*24) % 2];
+  const x = Math.round(player.x - 8), y = Math.round(player.y - 8);
+  if (player.boost && Math.floor(time*20) % 3){ ctx.fillStyle = '#ffd23f'; ctx.fillRect(x + 7, y + 17, 3, 3); ctx.fillStyle = '#ff6b3d'; ctx.fillRect(x + 8, y + 20, 1, 2); }
+  ctx.drawImage(spr, x, y);
+  if (player.muzzle > 0){   // muzzle flash at each gun
+    const guns = player.power > 0 ? [0] : [-3, 3];
+    for (const o of guns){ const gx = Math.round(player.x) + o, gy = y - 2;
+      ctx.fillStyle = '#ffd23f'; ctx.fillRect(gx - 2, gy, 5, 1); ctx.fillRect(gx, gy - 2, 1, 5);
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(gx - 1, gy - 1, 3, 3); }
+  }
+  if (player.boost){ ctx.fillStyle = 'rgba(255,255,255,0.55)'; for (let i = 0; i < 6; i++) ctx.fillRect(randi(0, W), randi(0, H), 1, randi(6, 14)); }
+}
+function drawBullets(){
+  for (const b of bullets){
+    const sp = Math.hypot(b.vx, b.vy) || 1, ux = b.vx/sp, uy = b.vy/sp, x = Math.round(b.x), y = Math.round(b.y);
+    [[5, '#ffb347', 0.9], [8, '#ff8c1a', 0.6], [11, '#e63946', 0.35]].forEach(([k, c, a]) => {   // bright projectile trail
+      ctx.globalAlpha = a; ctx.fillStyle = c; ctx.fillRect(Math.round(b.x - ux*k) - 1, Math.round(b.y - uy*k) - 1, 2, 3); });
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#16122b'; ctx.fillRect(x - 2, y - 4, 4, 8);
+    ctx.fillStyle = '#ffd23f'; ctx.fillRect(x - 1, y - 3, 2, 6);
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(x - 1, y - 3, 2, 2);
+  }
+  const blink = Math.floor(time*12) % 2;
+  for (const b of eBullets){
+    const x = Math.round(b.x) - 2, y = Math.round(b.y) - 2;
+    ctx.fillStyle = '#16122b'; ctx.fillRect(x - 1, y, 6, 4); ctx.fillRect(x, y - 1, 4, 6);
+    ctx.fillStyle = blink ? '#ff4f8b' : '#ffd23f'; ctx.fillRect(x, y, 4, 4);
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(x + 1, y + 1, 1, 1);
+  }
+}
+function drawPickups(){
+  for (const p of pickups){
+    const x = Math.round(p.x), y = Math.round(p.y);
+    ctx.drawImage(CHUTE, x - 5, y - 14);
+    ctx.drawImage(CRATE[p.type], x - 5, y - 5);
+  }
+}
+function drawFx(){
+  for (const f of fx){
+    if (f.t < 0) continue;   // delayed (chain) explosion not started yet
+    if (f.kind === 'spark'){ ctx.fillStyle = '#ffffff'; ctx.fillRect(Math.round(f.x) - 2, Math.round(f.y), 5, 1); ctx.fillRect(Math.round(f.x), Math.round(f.y) - 2, 1, 5); continue; }
+    if (f.kind === 'splash'){
+      const t = f.t/0.9, r = 4 + t*26; ctx.globalAlpha = 1 - t; ctx.fillStyle = '#e8f6ff';
+      for (let a = 0; a < 20; a++){ const an = a/20*Math.PI*2; ctx.fillRect(Math.round(f.x + Math.cos(an)*r), Math.round(f.y + Math.sin(an)*r*0.6), 2, 1); }
+      ctx.globalAlpha = 1; continue;
+    }
+    const t = f.t/(f.big ? 1.1 : 0.7), r = Math.round(f.size*(0.4 + t));
+    if (t < 0.15){ ctx.fillStyle = '#ffffff'; pcircle(ctx, Math.round(f.x), Math.round(f.y), Math.round(r*0.8)); }
+    else if (t < 0.5){ ctx.fillStyle = '#ff8c1a'; pcircle(ctx, Math.round(f.x), Math.round(f.y), r); ctx.fillStyle = '#ffd23f'; pcircle(ctx, Math.round(f.x), Math.round(f.y), Math.round(r*0.6)); }
+    else { ctx.globalAlpha = 1 - t; ctx.fillStyle = '#7a7f93'; pcircle(ctx, Math.round(f.x - 2), Math.round(f.y - 2), Math.round(r*0.6)); pcircle(ctx, Math.round(f.x + 3), Math.round(f.y + 1), Math.round(r*0.45)); ctx.globalAlpha = 1; }
+  }
+  for (const p of parts){
+    if (p.smoke){ const k = 1 - p.life/p.max, sz = 2 + Math.round(k*3); ctx.globalAlpha = clamp(p.life/p.max, 0, 1)*0.8; ctx.fillStyle = p.c; ctx.fillRect(Math.round(p.x) - (sz >> 1), Math.round(p.y) - (sz >> 1), sz, sz); continue; }
+    ctx.globalAlpha = clamp(p.life*2, 0, 1); ctx.fillStyle = p.c; ctx.fillRect(Math.round(p.x), Math.round(p.y), 2, 2);
+  }
+  ctx.globalAlpha = 1;
+}
+function drawShips(){
+  for (const s of ships){
+    const T = s.T, x = Math.round(s.x), y = Math.round(s.sy);
+    if (y < -T.h - 4 || y > H + 4) continue;
+    const cy = y + (T.h >> 1), stern = s.dir > 0 ? x + 1 : x + T.w - 2, bow = s.dir > 0 ? x + T.w : x - 1;
+    if (!s.sink){
+      const wl = Math.min(20, Math.round(Math.abs(s.vx)*0.35) + 6), ph = Math.floor(time*8);
+      for (let k = 1; k <= wl; k++){               // V-shaped wake behind the stern
+        if (hash(k, ph + (s.wy | 0)) < 0.2) continue;
+        const px = stern - s.dir*k*2, sp = Math.round(1 + k*0.45);
+        ctx.globalAlpha = 1 - k/(wl + 1); ctx.fillStyle = '#e8f6ff';
+        ctx.fillRect(px, cy - sp, 1, 1); ctx.fillRect(px, cy + sp, 1, 1);
+        if (k < 6){ ctx.fillStyle = '#bfe6ff'; ctx.fillRect(px, cy - 1, 1, 2); }   // propeller wash
+      }
+      ctx.globalAlpha = 1; ctx.fillStyle = '#e8f6ff';
+      const bw = Math.floor(time*6) % 2; ctx.fillRect(bow + s.dir*bw, cy - 1, 1, 1); ctx.fillRect(bow + s.dir*bw, cy + 1, 1, 1);  // bow wave
+      ctx.fillStyle = 'rgba(191,230,255,0.75)';
+      for (let i = 0; i < 3; i++){ const rx = x + Math.floor(hash(i, Math.floor(time*3) + (s.wy | 0))*T.w); ctx.fillRect(rx, y - 1, 2, 1); ctx.fillRect(rx + 2, y + T.h, 2, 1); }  // ripples
+    } else {
+      ctx.globalAlpha = Math.max(0, 1 - s.sink/1.5);
+      ctx.fillStyle = '#e8f6ff'; for (let i = 0; i < 4; i++) ctx.fillRect(x + Math.floor(hash(i, Math.floor(time*10))*T.w), y + Math.floor(hash(Math.floor(time*10), i)*T.h), 1, 1);
+    }
+    const img = s.flash > 0 ? (s.dir > 0 ? T.hitR : T.hitL) : (s.dir > 0 ? T.right : T.left);
+    if (s.fade < 1) ctx.globalAlpha = s.fade;
+    ctx.drawImage(img, x, y + (s.sink ? Math.round(s.sink*2) : 0));
+    ctx.globalAlpha = 1;
+  }
+}
+function drawShipLights(){   // drawn after the lighting pass so they glow at dusk
+  const on = Math.floor(time*1.5) % 2, glow = light.dusk;
+  for (const s of ships){
+    if (s.sink) continue;
+    const x = Math.round(s.x), y = Math.round(s.sy);
+    for (const [lx, ly, c0] of s.T.lights){
+      const c = s.dir > 0 ? c0 : c0 === RED ? GREEN : c0 === GREEN ? RED : c0;   // port stays red, starboard green
+      if (c === WHITE && !on) continue;
+      const px = s.dir > 0 ? x + lx + 1 : x + s.T.w - 2 - lx, py = y + ly + 1;
+      if (glow > 0.3){ ctx.globalAlpha = 0.4*glow; ctx.fillStyle = c; ctx.fillRect(px - 1, py - 1, 3, 3); ctx.globalAlpha = 1; }
+      ctx.fillStyle = c; ctx.fillRect(px, py, 1, 1);
+    }
+  }
+}
+function text(str, x, y, size, col){
+  ctx.font = `${size}px "Press Start 2P", monospace`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#16122b';
+  for (const [ox, oy] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[2,2]]) ctx.fillText(str, x + ox, y + oy);
+  ctx.fillStyle = col; ctx.fillText(str, x, y);
+}
+function drawTexts(){
+  for (const t of texts){ ctx.globalAlpha = clamp(t.life*2, 0, 1); text(t.t, Math.round(t.x), Math.round(t.y), t.big ? 10 : 8, t.c); }
+  ctx.globalAlpha = 1;
+  if (banner){
+    const a = clamp(Math.min(banner.t, 3 - banner.t)*3, 0, 1);
+    ctx.globalAlpha = a*0.7; ctx.fillStyle = '#16122b'; ctx.fillRect(0, 128, W, 44);
+    ctx.globalAlpha = a; ctx.fillStyle = '#ffd23f'; ctx.fillRect(0, 128, W, 2); ctx.fillRect(0, 170, W, 2);
+    text(banner.title, W/2, 144, 14, '#ffffff'); text(banner.sub, W/2, 161, 8, '#ffd23f');
+    ctx.globalAlpha = 1;
+  }
+}
+function render(){
+  ctx.save();
+  if (shake > 0) ctx.translate(randi(-3, 3), randi(-3, 3));
+  drawTerrain();
+  for (const b of boats){ const y = sy(b.y); if (y > -12 && y < H + 12) ctx.drawImage(BOAT, Math.round(b.x) - 4, y - 5); }
+  drawShips();
+  drawShadows();
+  for (const c of clouds) if (!c.hi) drawCloud(c, 0.95);
+  drawAtmosphere();
+  drawShipLights();
+  drawPickups();
+  drawEnemies();
+  drawStorms();
+  drawBullets();
+  drawPlayer();
+  drawFx();
+  for (const c of clouds) if (c.hi) drawCloud(c, 0.72);
+  drawTexts();
+  ctx.restore();
+}
+
+/* ---------- fixed-step game loop on requestAnimationFrame ---------- */
+let last = performance.now();
+function loop(t){
+  const dt = Math.min(0.05, Math.max(0, (t - last)/1000)); last = t;
+  if (mode !== 'paused') update(dt);
+  render(); emit('frame');
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+function reset(){
+  camY = 0; scroll = 50; score = 0; lives = 3; fuel = 100; kills = 0; landing = 0; endReason = '';
+  Object.assign(player, {x:W/2, y:H*0.78, vx:0, vy:0, bank:0, inv:1.5, alive:true, dead:0, fireCD:0, power:0, boost:false});
+  bullets = []; eBullets = []; enemies = []; storms = []; pickups = []; fx = []; parts = []; texts = [];
+  spawnT = 2; stormT = 6; balloonT = 4; crateT = 8; bombersDone = 0; section = -1; banner = null;
+  ships = []; shipT = 2; hostileCount = 0; hornT = 0;
+  for (const k in Input) Input[k] = 0;
+  initClouds();
+}
+const setMode = m => { mode = m; emit('mode', m); };
+
+return {
+  W, H,
+  on(e, f){ (listeners[e] = listeners[e] || []).push(f); },
+  get mode(){ return mode; },
+  start(){ reset(); setMode('playing'); },
+  pause(){ if (mode === 'playing') setMode('paused'); },
+  resume(){ if (mode === 'paused'){ last = performance.now(); setMode('playing'); } },
+  toMenu(){ reset(); menuCam = 0; setMode('menu'); },
+  stats(){ return {score:Math.floor(score), hi:Math.max(hiScore, Math.floor(score)), dist:(Math.min(camY, LEVEL.len)/1000).toFixed(1), lives, fuel,
+    status: landing ? 'LANDING' : !player.alive ? 'MAYDAY!' : fuel < 25 ? 'LOW FUEL!' : player.boost ? 'BOOST' : player.power > 0 ? 'TRIPLE SHOT' : SECTIONS[Math.max(0, section)].name,
+    warn: fuel < 25 || !player.alive,
+    speed:scroll, boost:player.boost, alive:player.alive, landing:!!landing, ocean:oceanAmount()}; },
+  hi: () => hiScore,
+  icon(){ return PLAYER_SPR[1][0].toDataURL(); },
+  menuSprite(){ return PLAYER_SPR[1]; },
+  _debug: {   // hooks for automated tests
+    get player(){ return player; }, Input,
+    counts(){ return {enemies:enemies.length, eBullets:eBullets.length, bullets:bullets.length, storms:storms.length, pickups:pickups.length, chunks:chunks.size, clouds:clouds.length, boats:boats.length, ships:ships.length, parts:parts.length, fx:fx.length}; },
+    ships(){ return ships.map(s => ({type:s.type, dir:s.dir, x:s.x, wy:s.wy, sy:s.sy, w:s.T.w, h:s.T.h, hp:s.hp, sink:s.sink})); },
+    boats(){ return boats.map(b => ({x:b.x, y:b.y})); },
+    spawnShip(t){ return !!spawnShip(t); }, setShipTimer(v){ shipT = v; },
+    jump(y){ camY = y; menuCam = y; section = -1; enemies = []; eBullets = []; storms = []; },
+    setFuel(v){ fuel = v; }, setLives(v){ lives = v; }, setInv(v){ player.inv = v; },
+    spawn(type, x, y, beh = 'straight', extra = {}){ return addEnemy(type, x, y, beh, Object.assign({vy:0}, extra)); },
+    spawnStorm(x, y){ storms.push({s:STORM_SHAPES[0], x, y, drift:0, flash:0}); },
+    spawnPickup(type, x, y){ pickups.push({type, x, y, t:0}); },
+    enemyBulletAtPlayer(){ eBullets.push({x:player.x, y:player.y - 20, vx:0, vy:120}); },
+    terrainAt, get camY(){ return camY; }, get score(){ return score; }, get section(){ return section; },
+    quant(){ const a = []; for (let y = 4800; y < 6800; y += 4) for (let x = 0; x < 256; x += 4){ const [v, e] = terrainAt(x, y); if (v > 0) a.push(e); } a.sort((p, q) => p - q); return [0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.97, 0.98].map(q => a[Math.floor(q*a.length)].toFixed(3)); },
+    peakStats(){ let n = 0, s = 0, r = 0, l = 0; for (let y = 4700; y < 6900; y += 3) for (let x = 0; x < W; x += 3){ const [v, e] = terrainAt(x, y); n++; if (v > 0) l++; if (e > SUMMIT) s++; else if (e > 0.70) r++; } return {summitPct:(100*s/n).toFixed(2), snowPct:(100*r/n).toFixed(2), landPct:(100*l/n).toFixed(1)}; }
+  }
+};
+})();
+
+
+/* =====================================================================
+   SOUND — original synthesized arcade audio (Web Audio API, no files).
+   Independent of gameplay: it only listens to game events and reads stats.
+   ===================================================================== */
+const Sound = (() => {
+  let ac = null, master, bus, noiseBuf, eng, wind, sea, voices = 0, nodesBuilt = 0, warnT = 0, lastT = 0;
+  let muted = false; try { muted = localStorage.getItem('horizonace.mute') === '1'; } catch(e){}
+  const played = {}, lastPlay = {}, listeners = [];
+  const MAX_VOICES = 18;
+  const GAP = {shoot:0.055, hit:0.035, explode:0.05, enemyShot:0.12, pop:0.05, warn:0.5, horn:3};   // anti-spam spacing
+
+  function unlock(){
+    if (!ac){
+      const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+      ac = new AC();
+      const comp = ac.createDynamicsCompressor(); comp.threshold.value = -16; comp.ratio.value = 6;
+      master = ac.createGain(); master.gain.value = muted ? 0 : 0.8; master.connect(comp); comp.connect(ac.destination);
+      bus = ac.createGain(); bus.gain.value = 0.9; bus.connect(master);
+      noiseBuf = ac.createBuffer(1, ac.sampleRate*2, ac.sampleRate);
+      const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random()*2 - 1;
+      buildAmbience();
+    }
+    if (ac.state === 'suspended' && !pausedNow()) ac.resume();
+  }
+  const pausedNow = () => Game.mode === 'paused';
+  function loopNoise(){ const s = ac.createBufferSource(); s.buffer = noiseBuf; s.loop = true; s.start(); return s; }
+  function buildAmbience(){   // created exactly once; restarts only change gains, so nothing duplicates
+    nodesBuilt++;
+    // engine: detuned saw + sub square through a low-pass, with a propeller "throb" LFO
+    const g = ac.createGain(); g.gain.value = 0;
+    const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 480; lp.Q.value = 1.2;
+    const o1 = ac.createOscillator(); o1.type = 'sawtooth'; o1.frequency.value = 70;
+    const o2 = ac.createOscillator(); o2.type = 'square'; o2.frequency.value = 35; const g2 = ac.createGain(); g2.gain.value = 0.35;
+    const am = ac.createGain(); am.gain.value = 0.7;
+    const lfo = ac.createOscillator(); lfo.frequency.value = 16; const lg = ac.createGain(); lg.gain.value = 0.3;
+    lfo.connect(lg); lg.connect(am.gain); o1.connect(lp); o2.connect(g2); g2.connect(lp); lp.connect(am); am.connect(g); g.connect(master);
+    o1.start(); o2.start(); lfo.start();
+    eng = {g, lp, o1, o2, lfo};
+    // wind: band-passed noise with a slowly wandering centre
+    const wg = ac.createGain(); wg.gain.value = 0; const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 800; bp.Q.value = 0.7;
+    const wl = ac.createOscillator(); wl.frequency.value = 0.11; const wlg = ac.createGain(); wlg.gain.value = 320; wl.connect(wlg); wlg.connect(bp.frequency); wl.start();
+    loopNoise().connect(bp); bp.connect(wg); wg.connect(master);
+    wind = {g:wg};
+    // ocean: low-passed noise swelling like waves
+    const sg = ac.createGain(); sg.gain.value = 0; const sl = ac.createBiquadFilter(); sl.type = 'lowpass'; sl.frequency.value = 420;
+    const swell = ac.createGain(); swell.gain.value = 0.6; const so = ac.createOscillator(); so.frequency.value = 0.16; const sog = ac.createGain(); sog.gain.value = 0.4;
+    so.connect(sog); sog.connect(swell.gain); so.start();
+    loopNoise().connect(sl); sl.connect(swell); swell.connect(sg); sg.connect(master);
+    sea = {g:sg};
+  }
+
+  function env(g, t, vol, attack, dur){ g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + attack); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); }
+  function track(node, parts){ voices++; node.onended = () => { voices--; parts.forEach(n => n.disconnect()); }; }
+  function tone(type, f, f2, dur, vol, at = 0, filt = 0){
+    if (voices >= MAX_VOICES) return;
+    const t = ac.currentTime + at, o = ac.createOscillator(), g = ac.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+    env(g, t, vol, Math.min(filt ? 0.12 : 0.01, dur/4), dur);
+    if (filt){ const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = filt; o.connect(lp); lp.connect(g); track(o, [o, lp, g]); }
+    else { o.connect(g); track(o, [o, g]); }
+    g.connect(bus); o.start(t); o.stop(t + dur + 0.05);
+  }
+  function noise(dur, vol, f, f2, type = 'lowpass', at = 0, q = 0.8){
+    if (voices >= MAX_VOICES) return;
+    const t = ac.currentTime + at, src = ac.createBufferSource(), fl = ac.createBiquadFilter(), g = ac.createGain();
+    src.buffer = noiseBuf; src.loop = true; fl.type = type; fl.Q.value = q;
+    fl.frequency.setValueAtTime(f, t); if (f2) fl.frequency.exponentialRampToValueAtTime(f2, t + dur);
+    env(g, t, vol, 0.004, dur); src.connect(fl); fl.connect(g); g.connect(bus);
+    track(src, [src, fl, g]); src.start(t, Math.random()*1.5); src.stop(t + dur + 0.05);
+  }
+  const FX = {
+    shoot(){ tone('square', 1250, 380, 0.06, 0.032); noise(0.035, 0.035, 5200, 2200, 'highpass'); },
+    hit(){ tone('triangle', 540, 150, 0.05, 0.07); noise(0.045, 0.06, 2600, 1300, 'bandpass', 0, 2); },
+    explode(){ noise(0.5, 0.24, 2400, 120); tone('sine', 150, 40, 0.35, 0.18); },
+    explodeBig(){ noise(1.3, 0.34, 1700, 60); tone('sine', 95, 28, 1.0, 0.3); noise(0.6, 0.2, 1900, 100, 'lowpass', 0.2); noise(0.55, 0.18, 1500, 90, 'lowpass', 0.42); },
+    pop(){ tone('square', 720, 140, 0.08, 0.05); noise(0.12, 0.1, 3200, 700, 'highpass'); },
+    splash(){ noise(0.5, 0.22, 2000, 120); tone('sine', 120, 35, 0.4, 0.16); noise(1.1, 0.16, 1100, 280, 'bandpass', 0.08, 1.2); },
+    enemyShot(){ tone('square', 380, 760, 0.06, 0.016); },
+    fuel(){ [523, 659, 784, 1047].forEach((f, i) => tone('square', f, null, 0.07, 0.05, i*0.06)); },
+    power(){ [392, 523, 659, 784, 988, 1319].forEach((f, i) => tone('triangle', f, null, 0.07, 0.08, i*0.045)); },
+    warn(){ tone('square', 880, null, 0.09, 0.045); tone('square', 660, null, 0.09, 0.045, 0.14); },
+    alert(){ [0, 0.2, 0.4].forEach(at => tone('square', 990, 740, 0.15, 0.04, at)); },
+    damage(){ noise(0.7, 0.32, 2600, 90); tone('sawtooth', 420, 50, 0.6, 0.1); },
+    gameover(){ [392, 330, 262, 196].forEach((f, i) => tone('square', f, i === 3 ? 98 : null, i === 3 ? 0.8 : 0.2, 0.06, 0.6 + i*0.24)); },
+    landing(){ [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tone('square', f, null, i === 5 ? 0.5 : 0.12, 0.055, i*0.13)); [523, 659, 784].forEach(f => tone('triangle', f, null, 0.9, 0.04, 0.8)); },
+    horn(){ [98, 123].forEach(f => tone('sawtooth', f, f*0.98, 1.2, 0.055, 0, 650)); tone('sawtooth', 98, 97, 0.9, 0.045, 1.45, 650); },
+    start(){ tone('square', 659, null, 0.08, 0.05); tone('square', 988, null, 0.16, 0.05, 0.09); },
+    click(){ tone('square', 880, null, 0.03, 0.025); }
+  };
+  function play(name){
+    if (!ac || muted || ac.state !== 'running' || !FX[name]) return;
+    const now = ac.currentTime;
+    if (GAP[name] && now - (lastPlay[name] || -9) < GAP[name]) return;
+    lastPlay[name] = now; played[name] = (played[name] || 0) + 1; FX[name]();
+  }
+  // continuous layers follow the game state every frame
+  function update(st, mode){
+    if (!ac) return;
+    const t = ac.currentTime, now = performance.now()/1000, dt = Math.min(0.1, now - (lastT || now)); lastT = now;
+    const playing = mode === 'playing', flying = playing && st.alive && !st.landing;
+    eng.g.gain.setTargetAtTime(flying ? (st.boost ? 0.13 : 0.09) : 0, t, flying ? 0.15 : 0.35);   // fades out on death, landing, game over
+    eng.o1.frequency.setTargetAtTime(48 + st.speed*0.45, t, 0.25);                                 // pitch rises with speed / boost
+    eng.o2.frequency.setTargetAtTime(24 + st.speed*0.225, t, 0.25);
+    eng.lfo.frequency.setTargetAtTime(10 + st.speed*0.12, t, 0.25);
+    eng.lp.frequency.setTargetAtTime(st.boost ? 950 : 480, t, 0.2);
+    wind.g.gain.setTargetAtTime(playing ? 0.05 + (st.boost ? 0.05 : 0) : mode === 'menu' ? 0.025 : 0.015, t, 0.5);
+    sea.g.gain.setTargetAtTime((playing || mode === 'menu') ? 0.08*st.ocean : 0, t, 0.8);
+    if (flying && st.fuel < 25){ warnT -= dt; if (warnT <= 0){ play('warn'); warnT = 1.4; } } else warnT = 0;
+  }
+  function onMode(m){
+    if (!ac) return;
+    if (m === 'paused') ac.suspend();          // everything freezes with the game
+    else if (ac.state === 'suspended') ac.resume();
+    if (m === 'playing' && !wasPlaying) play('start');
+    wasPlaying = m === 'playing' || m === 'paused';
+  }
+  let wasPlaying = false;
+  function setMuted(v){
+    muted = v; try { localStorage.setItem('horizonace.mute', v ? '1' : '0'); } catch(e){}
+    if (ac) master.gain.setTargetAtTime(v ? 0 : 0.8, ac.currentTime, 0.03);
+    listeners.forEach(f => f(v));
+  }
+  return {
+    unlock, play, update, onMode,
+    get muted(){ return muted; }, setMuted, toggle(){ setMuted(!muted); if (!muted) play('click'); },
+    onChange(f){ listeners.push(f); f(muted); },
+    _debug(){ return {state: ac ? ac.state : 'none', muted, voices, nodesBuilt, played:Object.assign({}, played),
+      engine: eng ? eng.g.gain.value : 0, master: ac ? master.gain.value : 0}; }
+  };
+})();
+
+/* =====================================================================
+   UI LAYER — overlays, HUD, scaling. Talks to the game only via its API.
+   ===================================================================== */
+(() => {
+const $ = id => document.getElementById(id);
+const stage = $('stage'), W = Game.W, H = Game.H;
+const screens = {menu:$('menu'), paused:$('pause'), over:$('over'), complete:$('over')};
+
+function fit(){
+  let s = Math.min(innerWidth/W, innerHeight/H);
+  if (Math.floor(s) >= 2) s = Math.floor(s);             // integer scaling for crisp pixels
+  stage.style.width = W*s + 'px'; stage.style.height = H*s + 'px';
+  stage.style.setProperty('--u', s + 'px');
+}
+addEventListener('resize', fit); fit();
+
+const icon = Game.icon();
+let livesShown = -1;
+function show(mode){
+  for (const k in screens) screens[k].classList.add('hidden');
+  if (screens[mode]) screens[mode].classList.remove('hidden');
+  $('hud').classList.toggle('hidden', mode === 'menu');
+  if (mode === 'menu') $('menuHi').textContent = Game.hi() ? 'HIGH SCORE ' + Game.hi() : '';
+  const f = {menu:'startBtn', paused:'resumeBtn'}[mode];
+  if (f) $(f).focus({preventScroll:true}); else if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  livesShown = -1;
+}
+Game.on('mode', show);
+Game.on('mode', m => Sound.onMode(m));
+Game.on('sfx', n => Sound.play(n));
+// browsers only allow audio after a user gesture
+addEventListener('pointerdown', () => Sound.unlock(), true);
+addEventListener('keydown', () => Sound.unlock(), true);
+const SPK_ON = '<svg viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true"><rect x="0" y="3" width="2" height="2"/><rect x="2" y="2" width="1" height="4"/><rect x="3" y="1" width="1" height="6"/><rect x="5" y="2" width="1" height="1"/><rect x="5" y="5" width="1" height="1"/><rect x="6" y="3" width="1" height="2"/><rect x="7" y="1" width="1" height="1"/><rect x="7" y="6" width="1" height="1"/></svg>';
+const SPK_OFF = SPK_ON.replace(/<rect x="5"[\s\S]*<\/svg>/, '<rect x="5" y="2" width="1" height="1"/><rect x="7" y="2" width="1" height="1"/><rect x="6" y="3" width="1" height="2"/><rect x="5" y="5" width="1" height="1"/><rect x="7" y="5" width="1" height="1"/></svg>');
+Sound.onChange(m => {
+  $('hudSound').innerHTML = m ? SPK_OFF : SPK_ON; $('hudSound').classList.toggle('off', m);
+  document.querySelectorAll('.sndText').forEach(b => b.textContent = 'Sound: ' + (m ? 'Off' : 'On'));
+});
+Game.on('end', r => {
+  $('endTitle').textContent = r.won ? 'MISSION COMPLETE' : 'GAME OVER';
+  $('endSub').textContent = r.reason;
+  const rows = [['Score', r.score], ['High score', r.hi], ['Distance', r.distance + ' km'], ['Enemies down', r.kills]];
+  if (r.won) rows.splice(1, 0, ['Landing bonus', '+' + r.bonus]);
+  $('endStats').innerHTML = rows.map(([a, b]) => `<span>${a}</span><span>${b}</span>`).join('');
+  $('newBest').classList.toggle('hidden', !r.isHi);
+  setTimeout(() => $('restartBtn').focus({preventScroll:true}), 30);
+});
+
+const btn = (id, fn) => $(id).addEventListener('click', e => { e.currentTarget.blur(); fn(); });
+btn('startBtn', () => Game.start()); btn('resumeBtn', () => Game.resume());
+btn('pRestartBtn', () => Game.start()); btn('pMenuBtn', () => Game.toMenu());
+btn('restartBtn', () => Game.start()); btn('menuBtn', () => Game.toMenu());
+btn('pauseBtn', () => Game.pause());
+['hudSound', 'menuSound', 'pauseSound'].forEach(id => $(id).addEventListener('click', e => { e.currentTarget.blur(); Sound.unlock(); Sound.toggle(); }));
+
+addEventListener('keydown', e => {
+  if (e.code === 'KeyM' && !e.repeat){ Sound.toggle(); return; }
+  if ((e.code === 'Escape' || e.code === 'KeyP') && !e.repeat){
+    e.preventDefault();
+    if (Game.mode === 'playing') Game.pause(); else if (Game.mode === 'paused') Game.resume();
+  } else if (e.code === 'Enter' && !e.repeat && !(document.activeElement instanceof HTMLButtonElement)){
+    if (['menu', 'over', 'complete'].includes(Game.mode)) Game.start();
+  }
+});
+document.addEventListener('visibilitychange', () => { if (document.hidden) Game.pause(); });
+addEventListener('blur', () => Game.pause());
+
+const mp = $('menuPlane').getContext('2d'); mp.imageSmoothingEnabled = false;
+const mSpr = Game.menuSprite();
+let lastKey = '';
+Game.on('frame', () => {
+  Sound.update(Game.stats(), Game.mode);
+  if (Game.mode === 'menu'){ mp.clearRect(0, 0, 17, 17); mp.drawImage(mSpr[Math.floor(performance.now()/50) % 2], 0, 0); return; }
+  const s = Game.stats();
+  const key = [s.score, s.hi, s.dist, s.lives, Math.ceil(s.fuel), s.status].join('|');
+  if (key === lastKey) return; lastKey = key;
+  $('hScore').textContent = String(s.score).padStart(6, '0');
+  $('hHi').textContent = String(s.hi).padStart(6, '0');
+  $('hDist').textContent = s.dist;
+  const fb = $('hFuel'); fb.firstElementChild.style.width = Math.max(0, s.fuel) + '%'; fb.classList.toggle('low', s.fuel < 25);
+  $('status').textContent = s.status; $('status').classList.toggle('warn', s.warn);
+  if (s.lives !== livesShown){ livesShown = s.lives; $('lives').innerHTML = Array.from({length:Math.max(0, s.lives)}, () => `<img src="${icon}" alt="life">`).join('') || '&nbsp;'; }
+});
+show('menu');
+})();
+</script>
+</body>
+</html>
