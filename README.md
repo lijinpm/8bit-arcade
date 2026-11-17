@@ -13,11 +13,13 @@ A top-down flying shooter. Fly one complete mission from morning to sunset, over
 - Lives, fuel, power-ups and a saved high score
 
 **Controls:** Arrow keys or WASD to fly, Space or J to fire, Shift or K to boost, Esc or P to pause, M for sound on/off.
+On phones and tablets: on-screen pad to fly, FIRE and BOOST buttons, II to pause.
 
 ### Feather Flight
 A side-scrolling bird flying game. Fly through blue skies with other birds, eat berries for energy and dodge hawks and storm clouds when the rain comes.
 
 **Controls:** Arrow keys or WASD to fly, Space or Esc to pause.
+On phones and tablets: on-screen pad to fly, II to pause.
 
 ## How to play
 

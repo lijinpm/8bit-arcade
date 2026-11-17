@@ -74,10 +74,49 @@ body{background:radial-gradient(circle at 50% 40%,#1c1838 0,#0b0918 70%)}
 .hint{font-size:.58em;color:#6b5f8a;margin:0 0 .7em;line-height:1.7}
 .stats{display:grid;grid-template-columns:auto auto;gap:.5em 1.2em;justify-content:center;text-align:left;font-size:.72em;margin:.3em auto 1em}
 .stats span:nth-child(even){text-align:right;color:var(--accent-lo)}
+/* 8-bit stepped transitions */
+.overlay:not(.hidden){animation:ovIn .2s steps(4) both}
+.overlay:not(.hidden) .px-card{animation:cardIn .24s steps(4) both}
+.overlay.out{animation:ovOut .14s steps(3) both!important;pointer-events:none}
+#hud:not(.hidden){animation:ovIn .2s steps(3) both}
+@keyframes ovIn{from{opacity:0}}
+@keyframes ovOut{to{opacity:0}}
+@keyframes cardIn{from{opacity:0;transform:translateY(calc(var(--u)*10))}}
+#wipe{position:fixed;inset:0;z-index:50;background:#0b0918;opacity:0;pointer-events:none;transition:opacity .24s steps(4)}
+#wipe.on{opacity:1;pointer-events:auto}
+@media (prefers-reduced-motion:reduce){.overlay,.px-card,#hud,#wipe{animation:none!important;transition:none!important}}
 .newbest{color:#e63946;font-size:.66em;margin:-.5em 0 .8em;animation:blink .6s steps(2) infinite}
+
+/* ---- on-screen touch controls (touch screens only) ---- */
+html,body{touch-action:none;overscroll-behavior:none}
+.touch-only{display:none}
+body.touch .touch-only{display:block}
+body.touch .key-only{display:none}
+#touch{position:fixed;left:0;right:0;bottom:0;height:var(--ctrlH,0px);pointer-events:none;z-index:20;
+  font-family:'Press Start 2P',ui-monospace,Menlo,monospace;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+#touch.hidden{display:none}
+#pad,#acts{position:absolute;bottom:max(16px,env(safe-area-inset-bottom));pointer-events:auto;touch-action:none}
+#pad{left:max(16px,env(safe-area-inset-left));width:132px;height:132px}
+#acts{right:max(16px,env(safe-area-inset-right));display:flex;gap:14px;align-items:flex-end}
+body.overlayctl #pad,body.overlayctl #acts{opacity:.6}
+#pad i{position:absolute;width:44px;height:44px;background:#fff8e7;
+  box-shadow:0 -4px 0 0 #16122b,0 4px 0 0 #16122b,-4px 0 0 0 #16122b,4px 0 0 0 #16122b,inset 0 -4px 0 0 #d9c9a3}
+#pad i::after{content:"";position:absolute;inset:14px;background:#16122b}
+#pad .u{left:44px;top:0}#pad .u::after{clip-path:polygon(50% 15%,100% 85%,0 85%)}
+#pad .d{left:44px;bottom:0}#pad .d::after{clip-path:polygon(0 15%,100% 15%,50% 85%)}
+#pad .l{left:0;top:44px}#pad .l::after{clip-path:polygon(15% 50%,85% 0,85% 100%)}
+#pad .r{right:0;top:44px}#pad .r::after{clip-path:polygon(15% 0,85% 50%,15% 100%)}
+#pad b{position:absolute;left:44px;top:44px;width:44px;height:44px;background:#e8d9b8}
+#pad i.on{background:#ffd23f;box-shadow:0 -4px 0 0 #16122b,0 4px 0 0 #16122b,-4px 0 0 0 #16122b,4px 0 0 0 #16122b,inset 0 4px 0 0 #c98d00}
+.tbtn{width:72px;height:72px;border:0;padding:0;font:inherit;font-size:10px;color:#16122b;background:#ff6b3d;touch-action:none;
+  box-shadow:0 -4px 0 0 #16122b,0 4px 0 0 #16122b,-4px 0 0 0 #16122b,4px 0 0 0 #16122b,inset 0 -5px 0 0 #b8401f,inset 0 4px 0 0 #ffb08f}
+.tbtn.alt{width:60px;height:60px;font-size:8px;background:#7ec8ff;box-shadow:0 -4px 0 0 #16122b,0 4px 0 0 #16122b,-4px 0 0 0 #16122b,4px 0 0 0 #16122b,inset 0 -5px 0 0 #3a7bd5,inset 0 4px 0 0 #d4eeff}
+.tbtn.on{transform:translateY(3px);filter:brightness(1.15)}
 </style>
 </head>
 <body>
+<div id="wipe" class="on"></div>
+<div id="touch" class="hidden" aria-hidden="true"><div id="pad"><i class="u"></i><i class="d"></i><i class="l"></i><i class="r"></i><b></b></div><div id="acts"><button class="tbtn alt" data-key="boost" aria-label="BOOST">BOOST</button><button class="tbtn" data-key="fire" aria-label="FIRE">FIRE</button></div></div>
 <div id="stage">
   <canvas id="game" width="256" height="384" aria-label="Horizon Ace game"></canvas>
 
@@ -101,13 +140,14 @@ body{background:radial-gradient(circle at 50% 40%,#1c1838 0,#0b0918 70%)}
       <h1 class="px-title">HORIZON<br>ACE</h1>
       <canvas id="menuPlane" width="17" height="17"></canvas>
       <p class="px-sub">Fly from dawn to dusk and land at the harbour airfield.</p>
-      <div class="controls">
+      <div class="controls key-only">
         <span><span class="px-kbd">←↑↓→</span><span class="px-kbd">WASD</span></span><span>Fly</span>
         <span><span class="px-kbd">SPACE</span><span class="px-kbd">J</span></span><span>Fire</span>
         <span><span class="px-kbd">SHIFT</span><span class="px-kbd">K</span></span><span>Boost</span>
         <span><span class="px-kbd">ESC</span><span class="px-kbd">P</span></span><span>Pause</span>
         <span><span class="px-kbd">M</span></span><span>Sound on/off</span>
       </div>
+      <p class="hint touch-only">Touch: steer with the pad, hold FIRE to shoot, BOOST to speed up.</p>
       <p class="hint">Grab yellow F crates for fuel, blue P for triple shot.<br>Avoid storm clouds, balloons and snowy summits.</p>
       <button class="px-btn" id="startBtn">Take Off</button><button class="px-btn px-btn--alt sndText" id="menuSound">Sound: On</button>
       <p class="px-sub" id="menuHi" style="margin:.7em 0 0"></p>
@@ -417,7 +457,9 @@ Object.entries({
 
 function cliffCol(kk, ch, x){ const band = Math.floor((kk - 1)/3), off = (band & 1)*3; return kk === 1 ? C.cliffTop : kk === ch ? C.cliffBot : ((x + off) % 6 === 0 || (kk - 1) % 3 === 2) ? C.mortar : C.cliff; }
 const chunks = new Map();
-function genChunk(ci){
+// Painting a strip takes ~50ms, so it is a generator that yields every few rows; the
+// scheduler below spreads it over frames (a few ms each) well before it scrolls into view.
+function* genChunk(ci){
   const M = 12, rows = CH + M + 1, topY = (ci + 1)*CH - 1;
   const V = new Float32Array(rows*W), E = new Float32Array(rows*W), TI = new Uint8Array(rows*W), CL = new Uint8Array(rows), SA = new Float32Array(rows);
   for (let k = 0; k < rows; k++){
@@ -425,11 +467,13 @@ function genChunk(ci){
     CL[k] = Math.round(w.reduce((s, wi, i) => s + wi*SECTIONS[i].cliff, 0));
     SA[k] = w.reduce((s, wi, i) => s + wi*SECTIONS[i].sand, 0);
     for (let x = 0; x < W; x++){ const [v, e] = sample(x, y, w); V[k*W + x] = v; E[k*W + x] = e; TI[k*W + x] = tierAt(x, y, w, v); }
+    if ((k & 3) === 3) yield;
   }
   const c = document.createElement('canvas'); c.width = W; c.height = CH;
   const g = c.getContext('2d'), img = g.createImageData(W, CH), D = img.data;
   const R = LEVEL.runway, rmid = (R.x0 + R.x1) >> 1;
   for (let r = 0; r < CH; r++){
+    if ((r & 7) === 7) yield;
     const k = r + M, y = topY - r, ch = CL[k];
     for (let x = 0; x < W; x++){
       const i = k*W + x, v = V[i]; let col;
@@ -489,6 +533,7 @@ function genChunk(ci){
     }
   }
   g.putImageData(img, 0, 0);
+  yield;
 
   // stamps: rocks in shallow water, trees, houses, hangars (drawn north to south)
   const toR = wy => topY - wy;
@@ -499,7 +544,7 @@ function genChunk(ci){
     g.drawImage(ROCK, x - 2, r - 2);
   }
   const stamps = [];
-  for (let gy = Math.floor((topY - CH - 10)/5); gy <= Math.floor((topY + 10)/5); gy++) for (let gx = 0; gx <= W/5; gx++){
+  for (let gy = Math.floor((topY - CH - 10)/5); gy <= Math.floor((topY + 10)/5); gy++){ if ((gy & 3) === 0) yield; for (let gx = 0; gx <= W/5; gx++){
     const x = gx*5 + Math.floor(hash(gx, gy)*4), y = gy*5 + Math.floor(hash(gy, gx + 99)*4);
     const w = weights(y);
     const thr = w.reduce((s, wi, i) => s + wi*SECTIONS[i].forest, 0);
@@ -508,7 +553,7 @@ function genChunk(ci){
     if (v < 0.35 || e > 0.55 || treeBlocked(x, y)) continue;
     if (w[1] > 0.5 && !tierAt(x, y, w, v)){ let face = false; for (let j = 2; j <= 9 && !face; j += 2){ const [v2] = sample(x, y + j, w); face = !!tierAt(x, y + j, w, v2); } if (face) continue; }
     stamps.push({y, img: (w[2] > 0.5 || e > 0.3) ? PINE : TREE, x: x - 4, ox:4});
-  }
+  }}
   for (const vl of VILLAGES){
     if (vl.y < topY - CH - 30 || vl.y > topY + 30) continue;
     for (let a = 0; a < 9; a++){
@@ -522,7 +567,23 @@ function genChunk(ci){
   for (const s of stamps) g.drawImage(s.img, s.x, toR(s.y) - s.ox);
   return c;
 }
-function getChunk(ci){ let c = chunks.get(ci); if (!c){ c = genChunk(ci); chunks.set(ci, c); } return c; }
+const jobs = new Map();
+function runJob(ci, deadline){        // resume a strip's painting; returns true when finished
+  let job = jobs.get(ci);
+  if (!job){ job = genChunk(ci); jobs.set(ci, job); }
+  for (;;){
+    const r = job.next();
+    if (r.done){ chunks.set(ci, r.value); jobs.delete(ci); return true; }
+    if (deadline && performance.now() > deadline) return false;
+  }
+}
+function getChunk(ci){ if (!chunks.has(ci)) runJob(ci, 0); return chunks.get(ci); }   // instant fallback (rarely needed)
+const LAST_CHUNK = Math.ceil((LEVEL.len + 400)/CH) + 1;
+function bake(budgetMs){               // paint upcoming strips first, then the rest of the level in spare time
+  const deadline = performance.now() + budgetMs, base = Math.max(0, Math.floor(camY/CH));
+  for (let ci = base; ci <= base + 5; ci++) if (!chunks.has(ci) && !runJob(ci, deadline)) return;
+  for (let ci = 0; ci <= LAST_CHUNK; ci++) if (!chunks.has(ci) && !runJob(ci, deadline)) return;
+}
 
 /* ---------- clouds (same shape in day, sunset and storm palettes) ---------- */
 function cloudMask(w, h, seed){
@@ -580,7 +641,8 @@ const formations = {};
 let formId = 0, light = lightAt(0);
 const BOMBER_AT = [1500, 4000, 6500, 8000];
 const listeners = {}; const emit = (e, d) => (listeners[e] || []).forEach(f => f(d));
-const sfx = name => emit('sfx', name);   // sound requests; the audio module decides how (or whether) to play them
+const sfx = name => emit('sfx', name);
+const keep = (a, f) => { let j = 0; for (let i = 0; i < a.length; i++) if (f(a[i])) a[j++] = a[i]; a.length = j; return a; };   // in-place filter   // sound requests; the audio module decides how (or whether) to play them
 try { hiScore = +localStorage.getItem('horizonace.hi') || 0; } catch(e){}
 
 const Input = {up:0, down:0, left:0, right:0, fire:0, boost:0};
@@ -701,7 +763,7 @@ const eBox = e => { const w = e.D.w, h = e.D.h; return {x:e.x - w*0.33, y:e.y - 
 function update(dt){
   time += dt;
   const playing = mode === 'playing';
-  if (mode === 'menu'){ menuCam = (menuCam + 40*dt) % (LEVEL.len - 400); camY = menuCam; scroll = 40; }
+  if (mode === 'menu'){ const prev = menuCam; menuCam = (menuCam + 40*dt) % (LEVEL.len - 400); if (menuCam < prev) ships = []; camY = menuCam; scroll = 40; }
   else if (playing){
     const boosting = Input.boost && player.alive && !landing && fuel > 0;
     player.boost = boosting;
@@ -714,9 +776,6 @@ function update(dt){
   const sec = weights(camY + H*0.5).reduce((bi, w, i, a) => w > a[bi] ? i : bi, 0);
   if (sec !== section){ section = sec; if (playing) banner = {t:3, title:SECTIONS[sec].name, sub:SECTIONS[sec].sub}; }
 
-  // pre-generate the next strip of landscape, at most one per frame
-  const nextCi = Math.floor((camY + H + CH)/CH);
-  if (!chunks.has(nextCi)) getChunk(nextCi);
 
   // clouds and boats
   for (const c of clouds){
@@ -739,7 +798,7 @@ function update(dt){
       }
     }
     if (landing) updateLanding(dt);
-    else if (camY >= LEVEL.landAt && player.alive){ landing = 0.001; banner = {t:3, title:'LANDING', sub:'Welcome home, Ace!'}; enemies = enemies.filter(e => e.y > -10); eBullets = []; }
+    else if (camY >= LEVEL.landAt && player.alive){ landing = 0.001; banner = {t:3, title:'LANDING', sub:'Welcome home, Ace!'}; enemies = keep(enemies, e => e.y > -10); eBullets = []; }
     spawnUpdate(dt);
   }
   updateObjects(dt, playing);
@@ -782,9 +841,9 @@ function updateLanding(dt){
 function updateObjects(dt, playing){
   const d = progress(), pb = pBox(), bspd = Math.min(150, 85 + 55*d);
   for (const b of bullets){ b.px = b.x; b.py = b.y; b.x += b.vx*dt; b.y += b.vy*dt; }
-  bullets = bullets.filter(b => b.y > -10 && b.x > -10 && b.x < W + 10 && !b.dead);
+  bullets = keep(bullets, b => b.y > -10 && b.x > -10 && b.x < W + 10 && !b.dead);
   for (const b of eBullets){ b.x += b.vx*dt; b.y += b.vy*dt; if (playing && player.alive && overlap(pb, {x:b.x - 1, y:b.y - 1, w:3, h:3})){ b.dead = true; killPlayer('SHOT DOWN'); } }
-  eBullets = eBullets.filter(b => !b.dead && b.y > -10 && b.y < H + 10 && b.x > -10 && b.x < W + 10);
+  eBullets = keep(eBullets, b => !b.dead && b.y > -10 && b.y < H + 10 && b.x > -10 && b.x < W + 10);
 
   for (const e of enemies){
     e.t += dt; e.flash = Math.max(0, e.flash - dt);
@@ -830,7 +889,7 @@ function updateObjects(dt, playing){
     if (Math.abs(e.vx) > 170) e.vx = Math.sign(e.vx)*170;
     if (!e.dead && (e.y > H + 30 || e.x < -60 || e.x > W + 60)){ e.dead = true; e.gone = true; if (e.form) formations[e.form].broken = true; }
   }
-  enemies = enemies.filter(e => !e.dead);
+  enemies = keep(enemies, e => !e.dead);
 
   for (const s of storms){
     s.y += scroll*1.1*dt; s.x += s.drift*dt;
@@ -838,7 +897,7 @@ function updateObjects(dt, playing){
     const core = {x:s.x + s.s.w*0.25, y:s.y + s.s.h*0.28, w:s.s.w*0.5, h:s.s.h*0.44};
     if (playing && player.alive && overlap(pb, core)) killPlayer('STRUCK BY STORM');
   }
-  storms = storms.filter(s => s.y < H + 10);
+  storms = keep(storms, s => s.y < H + 10);
 
   for (const p of pickups){
     p.t += dt; p.y += (34 + scroll*0.3)*dt; p.x += Math.sin(p.t*2)*8*dt;
@@ -850,15 +909,15 @@ function updateObjects(dt, playing){
       addScore(50);
     }
   }
-  pickups = pickups.filter(p => !p.dead && p.y < H + 12);
+  pickups = keep(pickups, p => !p.dead && p.y < H + 12);
 
   updateShips(dt, playing);
   for (const f of fx) f.t += dt;
-  fx = fx.filter(f => f.t < (f.kind === 'spark' ? 0.08 : f.kind === 'splash' ? 0.9 : f.big ? 1.1 : 0.7));
+  fx = keep(fx, f => f.t < (f.kind === 'spark' ? 0.08 : f.kind === 'splash' ? 0.9 : f.big ? 1.1 : 0.7));
   for (const p of parts){ p.vy += (p.g || 0)*dt; p.x += p.vx*dt; p.y += p.vy*dt + scroll*dt; p.life -= dt; }
-  parts = parts.filter(p => p.life > 0);
+  parts = keep(parts, p => p.life > 0);
   for (const t of texts){ t.y -= 18*dt; t.life -= dt; }
-  texts = texts.filter(t => t.life > 0);
+  texts = keep(texts, t => t.life > 0);
 }
 /* ---------- ships ---------- */
 function oceanAmount(){ const w = weights(camY + H*0.5); return clamp(w[0] + w[3]*0.7, 0, 1); }
@@ -876,7 +935,7 @@ function planLane(T, top, dir, speed){
   }
   const hullStart = fromShore ? entry : (dir > 0 ? -T.w - 2 : W + 2);         // left x of the hull
   const x0 = dir > 0 ? hullStart : hullStart - (fromShore ? T.w : 0);
-  const travel = speed*((H + 10 - top)/48) + T.w;
+  const travel = speed*((H + 10 - top)/36) + T.w;   // plan for the slowest scroll (title screen 40px/s) with margin
   for (let k = 0; k <= travel; k += 4){
     const cx = dir > 0 ? Math.max(0, x0) + k : Math.min(W - 1, x0 + T.w) - k;
     if (cx < -4 || cx > W + 4) break;                                          // beyond the screen edge: gone
@@ -907,7 +966,7 @@ function updateShips(dt, playing){
   for (const s of ships){
     s.sy = sy(s.wy); s.flash = Math.max(0, s.flash - dt); s.fade = Math.min(1, s.fade + dt*1.5);
     const bowX = s.dir > 0 ? s.x + s.T.w + 3 : s.x - 3;
-    if (!s.sink && bowX > 0 && bowX < W && terrainAt(bowX, s.wy - s.T.h*0.5)[0] > -0.1) s.vx *= Math.max(0, 1 - 3*dt);   // safety: never run aground
+    if (!s.sink && s.vx && terrainAt(bowX + s.dir*4, s.wy - s.T.h*0.5)[0] > -0.1) s.vx = 0;   // safety: drop anchor rather than run aground
     s.x += s.vx*dt;
     if (s.sink){ s.sink += dt; continue; }
     if (!s.T.hostile) continue;       // civilian ships are scenery: bullets pass over them
@@ -925,7 +984,7 @@ function updateShips(dt, playing){
       if (s.hp <= 0){ s.sink = 0.001; kills++; addScore(s.T.score, s.x + s.T.w/2, s.sy - 4); waterBlast(s.x + s.T.w/2, s.sy + s.T.h/2); break; }
     }
   }
-  ships = ships.filter(s => s.sink < 1.6 && s.sy < H + 24 && (s.dir > 0 ? s.x < W + 4 : s.x > -s.T.w - 4));
+  ships = keep(ships, s => s.sink < 1.6 && s.sy < H + 24 && (s.dir > 0 ? s.x < W + 4 : s.x > -s.T.w - 4));
 }
 function endGame(won){
   if (mode !== 'playing') return;
@@ -1134,14 +1193,15 @@ function render(){
 }
 
 /* ---------- fixed-step game loop on requestAnimationFrame ---------- */
-let last = performance.now();
+let last = performance.now(), loopId = 0;
 function loop(t){
-  const dt = Math.min(0.05, Math.max(0, (t - last)/1000)); last = t;
+  const dt = Math.min(0.05, Math.max(0, (t - last)/1000)); last = t;   // delta time, capped so a hiccup never causes a jump
   if (mode !== 'paused') update(dt);
   render(); emit('frame');
-  requestAnimationFrame(loop);
+  bake(mode === 'playing' ? 3 : 6);
+  loopId = requestAnimationFrame(loop);
 }
-requestAnimationFrame(loop);
+if (!window.__horizonLoop){ window.__horizonLoop = true; for (let ci = 0; ci < 4; ci++) getChunk(ci); loopId = requestAnimationFrame(loop); }
 
 function reset(){
   camY = 0; scroll = 50; score = 0; lives = 3; fuel = 100; kills = 0; landing = 0; endReason = '';
@@ -1156,12 +1216,13 @@ const setMode = m => { mode = m; emit('mode', m); };
 
 return {
   W, H,
+  input: Input,   // shared with the on-screen touch controls
   on(e, f){ (listeners[e] = listeners[e] || []).push(f); },
   get mode(){ return mode; },
-  start(){ reset(); setMode('playing'); },
+  start(){ reset(); last = performance.now(); setMode('playing'); },
   pause(){ if (mode === 'playing') setMode('paused'); },
   resume(){ if (mode === 'paused'){ last = performance.now(); setMode('playing'); } },
-  toMenu(){ reset(); menuCam = 0; setMode('menu'); },
+  toMenu(){ reset(); menuCam = 0; last = performance.now(); setMode('menu'); },
   stats(){ return {score:Math.floor(score), hi:Math.max(hiScore, Math.floor(score)), dist:(Math.min(camY, LEVEL.len)/1000).toFixed(1), lives, fuel,
     status: landing ? 'LANDING' : !player.alive ? 'MAYDAY!' : fuel < 25 ? 'LOW FUEL!' : player.boost ? 'BOOST' : player.power > 0 ? 'TRIPLE SHOT' : SECTIONS[Math.max(0, section)].name,
     warn: fuel < 25 || !player.alive,
@@ -1171,11 +1232,12 @@ return {
   menuSprite(){ return PLAYER_SPR[1]; },
   _debug: {   // hooks for automated tests
     get player(){ return player; }, Input,
+    baked(){ return {chunks:chunks.size, jobs:jobs.size, total:LAST_CHUNK + 1}; },
     counts(){ return {enemies:enemies.length, eBullets:eBullets.length, bullets:bullets.length, storms:storms.length, pickups:pickups.length, chunks:chunks.size, clouds:clouds.length, boats:boats.length, ships:ships.length, parts:parts.length, fx:fx.length}; },
     ships(){ return ships.map(s => ({type:s.type, dir:s.dir, x:s.x, wy:s.wy, sy:s.sy, w:s.T.w, h:s.T.h, hp:s.hp, sink:s.sink})); },
     boats(){ return boats.map(b => ({x:b.x, y:b.y})); },
     spawnShip(t){ return !!spawnShip(t); }, setShipTimer(v){ shipT = v; },
-    jump(y){ camY = y; menuCam = y; section = -1; enemies = []; eBullets = []; storms = []; },
+    jump(y){ camY = y; menuCam = y; section = -1; enemies = []; eBullets = []; storms = []; ships = []; },
     setFuel(v){ fuel = v; }, setLives(v){ lives = v; }, setInv(v){ player.inv = v; },
     spawn(type, x, y, beh = 'straight', extra = {}){ return addEnemy(type, x, y, beh, Object.assign({vy:0}, extra)); },
     spawnStorm(x, y){ storms.push({s:STORM_SHAPES[0], x, y, drift:0, flash:0}); },
@@ -1312,7 +1374,7 @@ const Sound = (() => {
     listeners.forEach(f => f(v));
   }
   return {
-    unlock, play, update, onMode,
+    unlock, play, update, onMode, suspend(){ if (ac && ac.state === 'running') ac.suspend(); },
     get muted(){ return muted; }, setMuted, toggle(){ setMuted(!muted); if (!muted) play('click'); },
     onChange(f){ listeners.push(f); f(muted); },
     _debug(){ return {state: ac ? ac.state : 'none', muted, voices, nodesBuilt, played:Object.assign({}, played),
@@ -1329,18 +1391,31 @@ const stage = $('stage'), W = Game.W, H = Game.H;
 const screens = {menu:$('menu'), paused:$('pause'), over:$('over'), complete:$('over')};
 
 function fit(){
-  let s = Math.min(innerWidth/W, innerHeight/H);
+  // on touch screens held upright, keep a strip below the game for the controls
+  const touch = document.body.classList.contains('touch'), portrait = innerHeight > innerWidth;
+  const ctrlH = touch && portrait ? Math.round(Math.min(230, Math.max(170, innerHeight*0.27))) : 0;
+  const availH = innerHeight - ctrlH;
+  let s = Math.min(innerWidth/W, availH/H);
   if (Math.floor(s) >= 2) s = Math.floor(s);             // integer scaling for crisp pixels
-  stage.style.width = W*s + 'px'; stage.style.height = H*s + 'px';
+  stage.style.width = W*s + 'px'; stage.style.height = H*s + 'px'; stage.style.top = (availH/2) + 'px';
   stage.style.setProperty('--u', s + 'px');
+  document.documentElement.style.setProperty('--ctrlH', (touch ? Math.max(ctrlH, 170) : 0) + 'px');
+  document.body.classList.toggle('overlayctl', touch && !portrait && (innerWidth - W*s)/2 < 150);   // not enough side room: semi-transparent
 }
 addEventListener('resize', fit); fit();
 
 const icon = Game.icon();
 let livesShown = -1;
+const outTimers = new Map();
 function show(mode){
-  for (const k in screens) screens[k].classList.add('hidden');
-  if (screens[mode]) screens[mode].classList.remove('hidden');
+  const target = screens[mode];
+  for (const el of new Set(Object.values(screens))){
+    clearTimeout(outTimers.get(el)); el.classList.remove('out');
+    if (el === target){ el.classList.remove('hidden'); continue; }
+    if (el.classList.contains('hidden')) continue;
+    el.classList.add('out');                                   // quick stepped fade instead of a hard cut
+    outTimers.set(el, setTimeout(() => { el.classList.add('hidden'); el.classList.remove('out'); }, 140));
+  }
   $('hud').classList.toggle('hidden', mode === 'menu');
   if (mode === 'menu') $('menuHi').textContent = Game.hi() ? 'HIGH SCORE ' + Game.hi() : '';
   const f = {menu:'startBtn', paused:'resumeBtn'}[mode];
@@ -1369,10 +1444,27 @@ Game.on('end', r => {
   setTimeout(() => $('restartBtn').focus({preventScroll:true}), 30);
 });
 
+// MAIN MENU = the 8-BIT ARCADE page. Online (GitHub Pages) or when opened from the arcade page it goes
+// there; a copy opened on its own falls back to this game's title screen.
+const wipe = $('wipe');
+const inArcade = /^https?:$/.test(location.protocol) || new URLSearchParams(location.search).has('arcade');
+let leaving = false;
+function goHome(){
+  if (leaving) return;
+  if (!inArcade){ Game.toMenu(); return; }
+  leaving = true; Sound.suspend();
+  wipe.classList.add('on');                        // fade to black first, so nothing flashes on the way out
+  setTimeout(() => { Game.toMenu(); Sound.suspend(); location.assign('../index.html'); }, 260);   // stop gameplay + clear state, then leave
+}
+addEventListener('pageshow', e => {                 // coming back with the browser's Back button
+  leaving = false; requestAnimationFrame(() => wipe.classList.remove('on'));
+  if (e.persisted && Game.mode !== 'menu') Game.toMenu();
+});
+addEventListener('pagehide', () => Sound.suspend());
 const btn = (id, fn) => $(id).addEventListener('click', e => { e.currentTarget.blur(); fn(); });
 btn('startBtn', () => Game.start()); btn('resumeBtn', () => Game.resume());
-btn('pRestartBtn', () => Game.start()); btn('pMenuBtn', () => Game.toMenu());
-btn('restartBtn', () => Game.start()); btn('menuBtn', () => Game.toMenu());
+btn('pRestartBtn', () => Game.start()); btn('pMenuBtn', goHome);
+btn('restartBtn', () => Game.start()); btn('menuBtn', goHome);
 btn('pauseBtn', () => Game.pause());
 ['hudSound', 'menuSound', 'pauseSound'].forEach(id => $(id).addEventListener('click', e => { e.currentTarget.blur(); Sound.unlock(); Sound.toggle(); }));
 
@@ -1390,21 +1482,48 @@ addEventListener('blur', () => Game.pause());
 
 const mp = $('menuPlane').getContext('2d'); mp.imageSmoothingEnabled = false;
 const mSpr = Game.menuSprite();
-let lastKey = '';
+const hud = {score:$('hScore'), hi:$('hHi'), dist:$('hDist'), fuel:$('hFuel'), fuelBar:$('hFuel').firstElementChild, status:$('status')};
+const shown = {};
+const put = (k, v, fn) => { if (shown[k] !== v){ shown[k] = v; fn(v); } };   // touch the DOM only when a value changes
 Game.on('frame', () => {
-  Sound.update(Game.stats(), Game.mode);
-  if (Game.mode === 'menu'){ mp.clearRect(0, 0, 17, 17); mp.drawImage(mSpr[Math.floor(performance.now()/50) % 2], 0, 0); return; }
   const s = Game.stats();
-  const key = [s.score, s.hi, s.dist, s.lives, Math.ceil(s.fuel), s.status].join('|');
-  if (key === lastKey) return; lastKey = key;
-  $('hScore').textContent = String(s.score).padStart(6, '0');
-  $('hHi').textContent = String(s.hi).padStart(6, '0');
-  $('hDist').textContent = s.dist;
-  const fb = $('hFuel'); fb.firstElementChild.style.width = Math.max(0, s.fuel) + '%'; fb.classList.toggle('low', s.fuel < 25);
-  $('status').textContent = s.status; $('status').classList.toggle('warn', s.warn);
+  Sound.update(s, Game.mode);
+  if (Game.mode === 'menu'){ mp.clearRect(0, 0, 17, 17); mp.drawImage(mSpr[Math.floor(performance.now()/50) % 2], 0, 0); return; }
+  put('score', s.score, v => hud.score.textContent = String(v).padStart(6, '0'));
+  put('hi', s.hi, v => hud.hi.textContent = String(v).padStart(6, '0'));
+  put('dist', s.dist, v => hud.dist.textContent = v);
+  put('fuel', Math.ceil(s.fuel), v => { hud.fuelBar.style.width = Math.max(0, v) + '%'; hud.fuel.classList.toggle('low', v < 25); });
+  put('status', s.status + s.warn, () => { hud.status.textContent = s.status; hud.status.classList.toggle('warn', s.warn); });
   if (s.lives !== livesShown){ livesShown = s.lives; $('lives').innerHTML = Array.from({length:Math.max(0, s.lives)}, () => `<img src="${icon}" alt="life">`).join('') || '&nbsp;'; }
 });
+
+// ---- touch controls: d-pad (slide your thumb for diagonals) + action buttons, multi-touch ----
+const touchUI = $('touch'), pad = $('pad'), arms = {up:pad.querySelector('.u'), down:pad.querySelector('.d'), left:pad.querySelector('.l'), right:pad.querySelector('.r')};
+function enableTouch(){ if (document.body.classList.contains('touch')) return; document.body.classList.add('touch'); fit(); syncTouch(); }
+function syncTouch(){ touchUI.classList.toggle('hidden', !document.body.classList.contains('touch') || Game.mode !== 'playing'); if (Game.mode !== 'playing') releaseAll(); }
+Game.on('mode', syncTouch);
+function setDir(d){ for (const k in arms){ const on = !!d[k]; Game.input[k] = on ? 1 : 0; arms[k].classList.toggle('on', on); } }
+let padId = null;
+function steer(e){
+  const r = pad.getBoundingClientRect(), dx = e.clientX - (r.left + r.width/2), dy = e.clientY - (r.top + r.height/2), dz = r.width*0.12;
+  setDir({left: dx < -dz && Math.abs(dx) > Math.abs(dy)*0.45, right: dx > dz && Math.abs(dx) > Math.abs(dy)*0.45,
+          up: dy < -dz && Math.abs(dy) > Math.abs(dx)*0.45, down: dy > dz && Math.abs(dy) > Math.abs(dx)*0.45});
+}
+pad.addEventListener('pointerdown', e => { e.preventDefault(); padId = e.pointerId; pad.setPointerCapture(e.pointerId); steer(e); });
+pad.addEventListener('pointermove', e => { if (e.pointerId === padId) steer(e); });
+const padEnd = e => { if (e.pointerId === padId){ padId = null; setDir({}); } };
+['pointerup', 'pointercancel', 'lostpointercapture'].forEach(t => pad.addEventListener(t, padEnd));
+document.querySelectorAll('.tbtn').forEach(b => {
+  const k = b.dataset.key, set = v => { Game.input[k] = v; b.classList.toggle('on', !!v); };
+  b.addEventListener('pointerdown', e => { e.preventDefault(); b.setPointerCapture(e.pointerId); set(1); });
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(t => b.addEventListener(t, () => set(0)));
+  b.addEventListener('contextmenu', e => e.preventDefault());
+});
+function releaseAll(){ padId = null; setDir({}); document.querySelectorAll('.tbtn').forEach(b => { Game.input[b.dataset.key] = 0; b.classList.remove('on'); }); }
+if (matchMedia('(pointer: coarse)').matches) enableTouch();
+addEventListener('touchstart', enableTouch, {passive:true, once:true});
 show('menu');
+requestAnimationFrame(() => requestAnimationFrame(() => wipe.classList.remove('on')));   // fade in from black
 })();
 </script>
 </body>
