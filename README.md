@@ -12,7 +12,7 @@ A top-down flying shooter. Fly one complete mission from morning to sunset, over
 - Synthesized arcade sound effects with a mute button
 - Lives, fuel, power-ups and a saved high score
 
-**Controls:** Arrow keys or WASD to fly, Space or J to fire, Shift or K to boost, Esc or P to pause, M for sound on/off.
+**Controls:** Arrow keys to fly, A, Space or J to fire, Shift or K to boost, Esc or P to pause, M for sound on/off, I for the How to Play card (also the i button).
 On phones and tablets: on-screen pad to fly, FIRE and BOOST buttons, II to pause.
 
 ### Feather Flight
